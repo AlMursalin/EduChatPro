@@ -24,14 +24,6 @@ s=s.replace(oldwire,newwire,1)
 pat=re.compile(r"U\.qa\('\[data-show-reactors\]',box\)\.forEach\(b=>b\.onclick=\(\)=>\{const rows=rs\.map\(x=>\{.*?W\.photos\(modal,sb\);\}\);",re.S)
 m=pat.search(s)
 if m:s=s[:m.start()]+"U.qa('[data-show-reactors]',box).forEach(b=>b.onclick=W.run(()=>showReactors(b.dataset.showReactors)));"+s[m.end():]
-pattern=r'(<div class="ws-social-preview" data-social-preview="\\$\\{p\\.id\\}"></div>)(<footer>)'
-replacement=r'''\\1<form class="ws-inline-comment" data-inline-comment="${p.id}"><input class="input" name="body" maxlength="4000" placeholder="Write a comment…" aria-label="Write a comment"><button type="submit" class="ws-inline-comment-send">Post</button></form>\\2'''
-s,n=re.subn(pattern,replacement,s,count=1)
-if n!=1: raise SystemExit('inline comment target missing')
-oldend="U.qa('[data-post-menu]',list).forEach(b=>b.onclick=()=>postMenu(posts.find(p=>p.id===b.dataset.postMenu)));}"
-newend="U.qa('[data-inline-comment]',list).forEach(form=>form.onsubmit=W.run(async e=>{e.preventDefault();const input=U.q('input[name=\"body\"]',form),body=input?.value.trim();if(!body)return;const btn=U.q('button[type=\"submit\"]',form);if(btn)btn.disabled=true;try{W.data(await sb.from('forum_comments').insert({post_id:form.dataset.inlineComment,author_id:S.user.id,body}));input.value='';await load();}finally{if(btn)btn.disabled=false;}}));U.qa('[data-post-menu]',list).forEach(b=>b.onclick=()=>postMenu(posts.find(p=>p.id===b.dataset.postMenu)));}"
-if oldend not in s: raise SystemExit('wire end missing')
-s=s.replace(oldend,newend,1)
 style_marker=".ws-social-preview:empty{display:none}.ws-social-preview{padding:0 0 10px}"
 style_add=".ws-social-preview:empty{display:none}.ws-social-preview{padding:0 0 10px}.ws-reaction-count{border:0;background:none;color:var(--ws-muted);padding:0;font:inherit;cursor:pointer}.ws-reaction-count:disabled{cursor:default}.ws-inline-comment{display:flex;gap:8px;align-items:center;padding:8px 0 2px}.ws-inline-comment .input{flex:1;border-radius:999px;padding:10px 14px}.ws-inline-comment-send{border:0;border-radius:999px;padding:9px 14px;background:var(--ws-blue);color:#fff;font-weight:700}.ws-fb-reactor-list{display:grid;gap:8px}.ws-fb-reactor-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--ws-line)}.ws-fb-reactor-row .ws-avatar{width:36px;height:36px}.ws-fb-reactor-row b{flex:1}"
 if style_marker in s:s=s.replace(style_marker,style_add,1)
