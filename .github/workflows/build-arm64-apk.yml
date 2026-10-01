@@ -8,6 +8,7 @@ on:
       - '.github/workflows/build-arm64-apk.yml'
       - 'v124-patch.js'
       - 'v125_apply.py'
+      - 'v126_apply.py'
 
 jobs:
   build:
@@ -57,14 +58,17 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
 
-      - name: Apply v1.2.5 source patch
+      - name: Apply v1.2.6 source patch
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
           set -e
-          python "$GITHUB_WORKSPACE/v125_apply.py"
+          python "$GITHUB_WORKSPACE/v126_apply.py"
           grep '^version:' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
+          node --check assets/webapp/educhat-r4.js
+          node --check assets/webapp/app.js
+          node --check assets/webapp/app-web118.js
 
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
@@ -77,6 +81,6 @@ jobs:
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.2.5-arm64-v8a
+          name: EduChatPro-v1.2.6-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
