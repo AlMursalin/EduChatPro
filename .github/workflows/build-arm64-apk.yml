@@ -1,0 +1,61 @@
+name: Build ARM64 APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'EduChatPro_v1.2.3_ARM64_Source.zip'
+      - '.github/workflows/build-arm64-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare source
+        shell: bash
+        run: |
+          set -e
+          if [ -f EduChatPro_v1.2.3_ARM64_Source.zip ]; then
+            rm -rf appsrc
+            mkdir appsrc
+            unzip -q EduChatPro_v1.2.3_ARM64_Source.zip -d appsrc
+            SRC="$(find appsrc -maxdepth 2 -name pubspec.yaml -printf '%h\n' | head -n1)"
+            if [ -z "$SRC" ]; then
+              echo "pubspec.yaml not found inside source ZIP"
+              exit 1
+            fi
+            echo "APP_DIR=$SRC" >> "$GITHUB_ENV"
+          elif [ -f pubspec.yaml ]; then
+            echo "APP_DIR=." >> "$GITHUB_ENV"
+          else
+            echo "No Flutter source found. Upload EduChatPro_v1.2.3_ARM64_Source.zip to repository root."
+            exit 1
+          fi
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'
+          channel: 'stable'
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Flutter pub get
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get
+
+      - name: Build ARM64 APK
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
+
+      - name: Upload ARM64 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.2.3-arm64-v8a
+          path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          if-no-files-found: error
