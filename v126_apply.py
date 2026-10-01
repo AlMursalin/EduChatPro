@@ -23,7 +23,34 @@ s=s.replace('<script src="native-mobile-patch.js"></script>',css+'<script src="n
 
 p=R/'assets/webapp/native-mobile-patch.js';s=p.read_text()
 s=s.replace("if(active&&/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)&&\n       (keyboardActive||document.documentElement.classList.contains('ecp-chat-input-focus'))){\n      active.blur();\n      return true;\n    }","if(active&&active===composerInput()){active.blur();return true;}\n    if(active&&/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)&&(keyboardActive||document.documentElement.classList.contains('ecp-chat-input-focus'))){active.blur();return true;}",1)
-back_override=r'''\n(()=>{\n  'use strict';\n  if(!window.EduNative)return;\n  const prior=window.EduMobileBack;\n  window.EduMobileBack=()=>{\n    const root=document.querySelector('#page');\n    const active=document.activeElement;\n    const composer=document.querySelector('#message-input,#dm-text,#chat-input');\n    // Inner Messenger flow always wins: keyboard -> conversation/list.\n    if(active&&composer&&active===composer){active.blur();return true;}\n    if(document.querySelector('.modal:not(.hidden),dialog[open]')||root?.classList.contains('conversation-open')||root?.classList.contains('direct-workspace')||(root?.querySelector('#group-body')&&root?.classList.contains('chat-workspace'))){\n      if(typeof prior==='function'&&prior())return true;\n    }\n    const current=root?.dataset?.page||'';\n    const nav=window.__ECP_NAV||(window.__ECP_NAV={stack:[],ready:true,suppress:false});\n    const go=(target,reset=false)=>{if(!target||target===current)return false;if(reset)nav.stack.length=0;nav.suppress=true;if(typeof window.navigate==='function'){window.navigate(target);return true;}return false;};\n    if(current==='notifications'||current==='saved')return go('chats',true);\n    if(['chats','groups','people'].includes(current))return go('forum',true);\n    if(current==='forum')return false;\n    while(nav.stack?.length){const target=nav.stack.pop();if(target&&target!==current)return go(target,false);}\n    if(current)return go('forum',true);\n    return typeof prior==='function'?prior():false;\n  };\n})();\n'''\nif 'v1.2.6 final Android back override' not in s:\n s += "\\n// v1.2.6 final Android back override\\n"+back_override+"\\n"\naddon='''\n  // v1.2.6 Messenger-style send: keep IME focused until Android Back.\n  let ecpSendTouchAt=0;const ecpSendSelector='#ws-send button[type="submit"],#dm-form button[type="submit"],#chat-form button[type="submit"],.ws-composer button[type="submit"],.composer button[type="submit"]';\n  document.addEventListener('pointerdown',e=>{const button=e.target.closest?.(ecpSendSelector),input=composerInput();if(!button||!input||document.activeElement!==input)return;e.preventDefault();ecpSendTouchAt=Date.now();const form=button.closest('form');requestAnimationFrame(()=>{try{input.focus({preventScroll:true})}catch{input.focus()}if(form&&!button.disabled)form.requestSubmit(button);settleBottom();});},true);\n  document.addEventListener('click',e=>{if(Date.now()-ecpSendTouchAt<700&&e.target.closest?.(ecpSendSelector)){e.preventDefault();e.stopImmediatePropagation();}},true);\n'''
+back_override=r'''
+(()=>{
+  'use strict';
+  if(!window.EduNative)return;
+  const prior=window.EduMobileBack;
+  window.EduMobileBack=()=>{
+    const root=document.querySelector('#page');
+    const active=document.activeElement;
+    const composer=document.querySelector('#message-input,#dm-text,#chat-input');
+    if(active&&composer&&active===composer){active.blur();return true;}
+    if(document.querySelector('.modal:not(.hidden),dialog[open]')||root?.classList.contains('conversation-open')||root?.classList.contains('direct-workspace')||(root?.querySelector('#group-body')&&root?.classList.contains('chat-workspace'))){
+      if(typeof prior==='function'&&prior())return true;
+    }
+    const current=root?.dataset?.page||'';
+    const nav=window.__ECP_NAV||(window.__ECP_NAV={stack:[],ready:true,suppress:false});
+    const go=(target,reset=false)=>{if(!target||target===current)return false;if(reset)nav.stack.length=0;nav.suppress=true;if(typeof window.navigate==='function'){window.navigate(target);return true;}return false;};
+    if(current==='notifications'||current==='saved')return go('chats',true);
+    if(['chats','groups','people'].includes(current))return go('forum',true);
+    if(current==='forum')return false;
+    while(nav.stack?.length){const target=nav.stack.pop();if(target&&target!==current)return go(target,false);}
+    if(current)return go('forum',true);
+    return typeof prior==='function'?prior():false;
+  };
+})();
+'''
+if 'v1.2.6 final Android back override' not in s:
+ s += "\n// v1.2.6 final Android back override\n"+back_override+"\n"
+addon='''\n  // v1.2.6 Messenger-style send: keep IME focused until Android Back.\n  let ecpSendTouchAt=0;const ecpSendSelector='#ws-send button[type="submit"],#dm-form button[type="submit"],#chat-form button[type="submit"],.ws-composer button[type="submit"],.composer button[type="submit"]';\n  document.addEventListener('pointerdown',e=>{const button=e.target.closest?.(ecpSendSelector),input=composerInput();if(!button||!input||document.activeElement!==input)return;e.preventDefault();ecpSendTouchAt=Date.now();const form=button.closest('form');requestAnimationFrame(()=>{try{input.focus({preventScroll:true})}catch{input.focus()}if(form&&!button.disabled)form.requestSubmit(button);settleBottom();});},true);\n  document.addEventListener('click',e=>{if(Date.now()-ecpSendTouchAt<700&&e.target.closest?.(ecpSendSelector)){e.preventDefault();e.stopImmediatePropagation();}},true);\n'''
 s=s.replace('\n})();\n',addon+'\n})();\n',1);p.write_text(s)
 
 p=R/'lib/features/meetings/meeting_room_page.dart';s=p.read_text().replace('  bool expandedVideo=false;','  bool expandedVideo=false;\n  bool controlsExpanded=false;',1)
