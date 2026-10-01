@@ -24,7 +24,7 @@ s=s.replace(oldwire,newwire,1)
 pat=re.compile(r"U\.qa\('\[data-show-reactors\]',box\)\.forEach\(b=>b\.onclick=\(\)=>\{const rows=rs\.map\(x=>\{.*?W\.photos\(modal,sb\);\}\);",re.S)
 m=pat.search(s)
 if m:s=s[:m.start()]+"U.qa('[data-show-reactors]',box).forEach(b=>b.onclick=W.run(()=>showReactors(b.dataset.showReactors)));"+s[m.end():]
-pattern=r'(<div class="ws-social-preview" data-social-preview="\\${p\\.id}"></div>)(<footer>)'
+pattern=r'(<div class="ws-social-preview" data-social-preview="\\$\\{p\\.id\\}"></div>)(<footer>)'
 replacement=r'''\\1<form class="ws-inline-comment" data-inline-comment="${p.id}"><input class="input" name="body" maxlength="4000" placeholder="Write a comment…" aria-label="Write a comment"><button type="submit" class="ws-inline-comment-send">Post</button></form>\\2'''
 s,n=re.subn(pattern,replacement,s,count=1)
 if n!=1: raise SystemExit('inline comment target missing')
