@@ -45,6 +45,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Remove local Windows Java override
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          if [ -f android/gradle.properties ]; then
+            sed -i '/^[[:space:]]*org\.gradle\.java\.home[[:space:]]*=/d' android/gradle.properties
+          fi
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
