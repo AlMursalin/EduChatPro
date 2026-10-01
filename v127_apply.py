@@ -24,10 +24,10 @@ s=s.replace(oldwire,newwire,1)
 pat=re.compile(r"U\.qa\('\[data-show-reactors\]',box\)\.forEach\(b=>b\.onclick=\(\)=>\{const rows=rs\.map\(x=>\{.*?W\.photos\(modal,sb\);\}\);",re.S)
 m=pat.search(s)
 if m:s=s[:m.start()]+"U.qa('[data-show-reactors]',box).forEach(b=>b.onclick=W.run(()=>showReactors(b.dataset.showReactors)));"+s[m.end():]
-oldfrag='</div><div class="ws-social-preview" data-social-preview="${p.id}"></div><footer>'
-newfrag='</div><div class="ws-social-preview" data-social-preview="${p.id}"></div><form class="ws-inline-comment" data-inline-comment="${p.id}"><input class="input" name="body" maxlength="4000" placeholder="Write a comment…" aria-label="Write a comment"><button type="submit" class="ws-inline-comment-send">Post</button></form><footer>'
-if oldfrag not in s: raise SystemExit('inline comment target missing')
-s=s.replace(oldfrag,newfrag,1)
+pattern=r'(<div class="ws-social-preview" data-social-preview="\\${p\\.id}"></div>)(<footer>)'
+replacement=r'''\\1<form class="ws-inline-comment" data-inline-comment="${p.id}"><input class="input" name="body" maxlength="4000" placeholder="Write a comment…" aria-label="Write a comment"><button type="submit" class="ws-inline-comment-send">Post</button></form>\\2'''
+s,n=re.subn(pattern,replacement,s,count=1)
+if n!=1: raise SystemExit('inline comment target missing')
 oldend="U.qa('[data-post-menu]',list).forEach(b=>b.onclick=()=>postMenu(posts.find(p=>p.id===b.dataset.postMenu)));}"
 newend="U.qa('[data-inline-comment]',list).forEach(form=>form.onsubmit=W.run(async e=>{e.preventDefault();const input=U.q('input[name=\"body\"]',form),body=input?.value.trim();if(!body)return;const btn=U.q('button[type=\"submit\"]',form);if(btn)btn.disabled=true;try{W.data(await sb.from('forum_comments').insert({post_id:form.dataset.inlineComment,author_id:S.user.id,body}));input.value='';await load();}finally{if(btn)btn.disabled=false;}}));U.qa('[data-post-menu]',list).forEach(b=>b.onclick=()=>postMenu(posts.find(p=>p.id===b.dataset.postMenu)));}"
 if oldend not in s: raise SystemExit('wire end missing')
