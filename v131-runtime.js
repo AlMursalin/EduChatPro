@@ -218,6 +218,50 @@ function bindGroupPermissionReminder(){
 }
 bindGroupPermissionReminder();
 
+
+let pollChannel=null,pollGroup='';
+async function groupPolls(){
+ const x=state(),g=x?.group;if(!g||!sb)return;
+ const host=q('#group-body')||q('#chat-log')?.parentElement;if(!host)return;
+ let box=q('#v140-group-polls',host);
+ if(!box){box=document.createElement('section');box.id='v140-group-polls';box.className='v140-group-polls';const form=q('#chat-form',host)||q('#chat-form');(form?.parentElement||host).insertBefore(box,form||null)}
+ const isAdmin=['super_admin','assistant_admin','admin'].includes(String(x?.role||''));
+ const polls=(await sb.from('group_polls').select('*').eq('group_id',g.id).order('created_at',{ascending:false}).limit(12)).data||[];
+ const ids=polls.map(p=>p.id);let votes=[];
+ if(ids.length)votes=(await sb.from('group_poll_votes').select('*').in('poll_id',ids)).data||[];
+ const mine=new Map(votes.filter(v=>v.user_id===x.user.id).map(v=>[v.poll_id,v.choice]));
+ box.innerHTML='<div class="v140-poll-head"><div><b>Polls</b><small>Vote even when member texting is OFF</small></div>'+(isAdmin?'<button type="button" id="v140-create-poll" class="btn">Create poll</button>':'')+'</div>'+
+   '<div class="v140-poll-list">'+(polls.length?polls.map(p=>{
+     const opts=Array.isArray(p.options)?p.options:[];
+     const total=votes.filter(v=>v.poll_id===p.id).length;
+     const closed=!!p.closed_at;
+     return '<article class="v140-poll-card"><h4>'+esc(p.question)+'</h4>'+opts.map((o,i)=>{
+       const c=votes.filter(v=>v.poll_id===p.id&&v.choice===i).length,sel=mine.get(p.id)===i,pct=total?Math.round(c*100/total):0;
+       return '<button type="button" class="v140-poll-option '+(sel?'selected':'')+'" data-poll="'+p.id+'" data-choice="'+i+'" '+(closed?'disabled':'')+'><span>'+esc(String(o))+'</span><b>'+pct+'%</b><i style="width:'+pct+'%"></i></button>';
+     }).join('')+'<small>'+total+' vote'+(total===1?'':'s')+(closed?' · Closed':'')+'</small></article>';
+   }).join(''):'<p class="v140-poll-empty">No polls yet.</p>')+'</div>';
+ qa('[data-poll]',box).forEach(b=>b.onclick=async()=>{
+   const poll_id=b.dataset.poll,choice=Number(b.dataset.choice);
+   const r=await sb.from('group_poll_votes').upsert({poll_id,user_id:x.user.id,choice},{onConflict:'poll_id,user_id'});
+   if(r.error){window.EduUI?.toast?.(r.error.message,'error');return} await groupPolls();
+ });
+ q('#v140-create-poll',box)?.addEventListener('click',async()=>{
+   const question=prompt('Poll question');if(!question?.trim())return;
+   const raw=prompt('Options (separate with commas)');if(!raw)return;
+   const options=raw.split(',').map(v=>v.trim()).filter(Boolean).slice(0,6);
+   if(options.length<2){window.EduUI?.toast?.('Add at least 2 options.','error');return}
+   const r=await sb.from('group_polls').insert({group_id:g.id,created_by:x.user.id,question:question.trim(),options});
+   if(r.error)window.EduUI?.toast?.(r.error.message,'error');else{window.EduUI?.toast?.('Poll created.','ok');await groupPolls()}
+ });
+ if(pollGroup!==g.id){
+   pollGroup=g.id;if(pollChannel)try{await sb.removeChannel(pollChannel)}catch{}
+   pollChannel=sb.channel('group-polls-'+g.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'group_polls',filter:'group_id=eq.'+g.id},()=>groupPolls())
+    .on('postgres_changes',{event:'*',schema:'public',table:'group_poll_votes'},()=>groupPolls())
+    .subscribe();
+ }
+}
+
 function groupToggle(){
  const info=q('.group-info');if(!info||info.querySelector('.v131-group-toggle')||!S?.group)return;
  const g=S.group,wrap=document.createElement('label');wrap.className='v131-group-toggle';
@@ -258,10 +302,10 @@ const css=document.createElement('style');css.textContent=`
 .v131-comment-composer,.v138-comment-composer{position:sticky!important;bottom:0;background:var(--ws-bg)!important;border-top:1px solid var(--ws-line)!important;padding:8px 10px max(8px,env(safe-area-inset-bottom))!important}.v131-comment-composer textarea,.v138-comment-composer textarea{min-height:40px!important;max-height:110px!important;border-radius:22px!important;resize:none!important}
 .v138-comment-composer{display:grid!important;grid-template-columns:36px minmax(0,1fr) auto!important;gap:8px!important;align-items:end!important}.v138-composer-avatar{width:36px!important;height:36px!important;border-radius:50%!important;background:var(--ws-soft,#e4e6eb)!important;display:grid!important;place-items:center!important;font-weight:700!important;overflow:hidden!important}.v138-composer-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}.v138-reply-banner{grid-column:2/4!important;font-size:12px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div{min-width:0!important;max-width:calc(100% - 44px)!important}.v138-comments .ws-comment>div>b{font-size:13px!important}.v138-comments .ws-comment time{font-size:11px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div>p{font-size:14px!important;line-height:1.32!important;width:max-content!important;max-width:100%!important}.typing-indicator{display:flex;align-items:center;gap:7px;min-height:24px;padding:2px 12px;color:var(--ws-muted);font-size:12px}.typing-indicator[hidden]{display:none!important}.typing-dots{display:inline-flex;gap:3px}.typing-dots i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.35;animation:v131typing 1s infinite}.typing-dots i:nth-child(2){animation-delay:.13s}.typing-dots i:nth-child(3){animation-delay:.26s}@keyframes v131typing{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-4px);opacity:1}}.sending{opacity:.65}
 .v141-polls{margin:10px 0;padding:10px;border:1px solid var(--ws-line,#ddd);border-radius:16px;background:var(--ws-bg,#fff)}.v141-polls-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.v141-poll-list{display:grid;gap:10px}.v141-poll-card{border:1px solid var(--ws-line,#ddd);border-radius:14px;padding:10px;background:var(--ws-bg,#fff)}.v141-poll-card header{display:grid;gap:3px;margin-bottom:8px}.v141-poll-card header small{color:var(--ws-muted,#65676b)}.v141-poll-option{position:relative;isolation:isolate;width:100%;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;border:1px solid var(--ws-line,#ddd);background:transparent;border-radius:12px;padding:10px;margin:6px 0;overflow:hidden}.v141-poll-option i{position:absolute;z-index:-1;inset:0 auto 0 0;background:rgba(24,119,242,.12);border-radius:11px}.v141-poll-option.selected{border-color:#1877f2}.v141-poll-radio{width:22px;height:22px;border:2px solid #a0a7b0;border-radius:50%;display:grid;place-items:center;font-size:12px}.v141-poll-option.selected .v141-poll-radio{border-color:#1877f2;background:#1877f2;color:white}.v141-poll-count{font-size:12px;color:var(--ws-muted,#65676b)}.v141-poll-empty{font-size:12px;color:var(--ws-muted,#65676b);margin:4px}.v141-poll-create{position:fixed;z-index:99999;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:end center;padding:12px}.v141-poll-dialog{width:min(560px,100%);background:var(--ws-bg,#fff);border-radius:20px;padding:16px;display:grid;gap:10px}.v141-poll-dialog h3{margin:0}.v141-poll-options,#v141-poll-options{display:grid;gap:8px}.v141-poll-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.ecp-clickable-link{color:#1877f2!important;text-decoration:none!important;overflow-wrap:anywhere!important;word-break:break-word!important}.ecp-clickable-link:active{text-decoration:underline!important}.v139-group-lock-note{margin:8px 10px;padding:10px 12px;border-radius:12px;background:var(--ws-soft,#f0f2f5);color:var(--ws-muted,#65676b);font-size:12px;line-height:1.35;text-align:center}.v139-group-locked{opacity:.72}.v139-group-locked button[type="submit"]{cursor:not-allowed}.v131-group-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:9px 0;border:1px solid var(--ws-line);border-radius:15px;background:var(--ws-soft)}.v131-group-toggle span{display:grid;gap:2px}.v131-group-toggle small{color:var(--ws-muted)}.v131-group-toggle input{display:none}.v131-group-toggle i{width:46px;height:26px;border-radius:999px;background:#9ba3ad;position:relative}.v131-group-toggle i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.v131-group-toggle input:checked+i{background:#1877f2}.v131-group-toggle input:checked+i:after{transform:translateX(20px)}
-html.ecp-keyboard-open .composer,html.ecp-keyboard-open .ws-composer{transition:none!important;animation:none!important}
+.v140-group-polls{margin:8px 10px 10px;padding:10px;border:1px solid var(--ws-line,#ddd);border-radius:16px;background:var(--ws-bg,#fff)}.v140-poll-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.v140-poll-head>div{display:grid;gap:2px}.v140-poll-head small,.v140-poll-card>small{color:var(--ws-muted,#65676b);font-size:11px}.v140-poll-list{display:grid;gap:10px}.v140-poll-card{padding:10px;border:1px solid var(--ws-line,#ddd);border-radius:14px}.v140-poll-card h4{margin:0 0 8px;font-size:14px}.v140-poll-option{position:relative;overflow:hidden;width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;padding:9px 11px;border:1px solid var(--ws-line,#ddd);border-radius:12px;background:transparent;text-align:left}.v140-poll-option span,.v140-poll-option b{position:relative;z-index:2}.v140-poll-option i{position:absolute;z-index:1;left:0;top:0;bottom:0;background:rgba(24,119,242,.12)}.v140-poll-option.selected{border-color:#1877f2}.v140-poll-empty{margin:6px 0;color:var(--ws-muted,#65676b);font-size:12px}html.ecp-keyboard-open .composer,html.ecp-keyboard-open .ws-composer{transition:none!important;animation:none!important}
 `;document.head.appendChild(css);
 
 facebookShare();backHandler();
-let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();linkifyMessages();polishComments();groupPermissionGuard();groupToggle();loadGroupPolls()})}).observe(document.body,{subtree:true,childList:true});
+let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();linkifyMessages();polishComments();groupPermissionGuard();groupPolls();groupToggle();loadGroupPolls()})}).observe(document.body,{subtree:true,childList:true});
 window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();linkifyMessages();polishComments();groupPermissionGuard();groupToggle();loadGroupPolls()},0);
 })();
