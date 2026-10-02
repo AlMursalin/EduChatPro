@@ -120,7 +120,7 @@ jobs:
           grep '^version:' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
 
-      - name: Apply v1.3.7 avatar and share fix
+      - name: Apply v1.3.8 cache navigation and forum fix
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
@@ -129,6 +129,9 @@ jobs:
           grep '^version:' pubspec.yaml
           node --check assets/webapp/v131-runtime.js
           node --check assets/webapp/v131-photos.js
+          grep -q "v1.3.8 back" assets/webapp/v131-runtime.js
+          grep -q "ecp-photo-v138" assets/webapp/v131-photos.js
+          grep -q "v138-comment-composer" assets/webapp/v131-runtime.js
           node --check assets/webapp/native-mobile-patch.js
 
       - name: Flutter pub get
@@ -142,6 +145,6 @@ jobs:
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.3.7-arm64-v8a
+          name: EduChatPro-v1.3.8-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
