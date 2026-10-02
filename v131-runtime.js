@@ -110,6 +110,33 @@ function facebookShare(){
  },true);
 }
 
+function groupPermissionGuard(){
+ const x=state(),g=x?.group;if(!g)return;
+ const isAdmin=['super_admin','assistant_admin','admin'].includes(String(x?.role||''));
+ const locked=!g.allow_member_messaging&&!isAdmin;
+ const form=q('#chat-form'),input=q('#chat-input');
+ if(form){
+   form.classList.toggle('v139-group-locked',locked);
+   let note=q('.v139-group-lock-note',form.parentElement||document);
+   if(locked&&!note){note=document.createElement('div');note.className='v139-group-lock-note';note.textContent='Texting or calling is not allowed in this group. You can still read, download files, vote in polls, and join active calls or meetings.';form.parentElement?.insertBefore(note,form)}
+   if(!locked&&note)note.remove();
+ }
+ if(input){input.readOnly=locked;if(locked)input.placeholder='Texting is not allowed in this group';}
+}
+function bindGroupPermissionReminder(){
+ if(document.documentElement.dataset.v139GroupGuard)return;
+ document.documentElement.dataset.v139GroupGuard='1';
+ const blocked=()=>{const x=state(),g=x?.group,isAdmin=['super_admin','assistant_admin','admin'].includes(String(x?.role||''));return !!(g&&!g.allow_member_messaging&&!isAdmin)};
+ const remind=e=>{if(!blocked())return false;e?.preventDefault?.();e?.stopImmediatePropagation?.();window.EduUI?.toast?.('Texting or calling is not allowed in this group.','error');return true};
+ document.addEventListener('submit',e=>{if(e.target?.matches?.('#chat-form')&&remind(e))return},true);
+ document.addEventListener('click',e=>{
+   const t=e.target.closest?.('#chat-video,#chat-audio,#chat-form button[type="submit"],[data-voice],[data-record],[data-attach],[data-upload],#chat-file,#chat-voice');
+   if(t)remind(e);
+ },true);
+ document.addEventListener('pointerdown',e=>{const t=e.target.closest?.('.v139-group-lock-note,#chat-input[readonly]');if(t)remind(e)},true);
+}
+bindGroupPermissionReminder();
+
 function groupToggle(){
  const info=q('.group-info');if(!info||info.querySelector('.v131-group-toggle')||!S?.group)return;
  const g=S.group,wrap=document.createElement('label');wrap.className='v131-group-toggle';
@@ -149,11 +176,11 @@ const css=document.createElement('style');css.textContent=`
 .v131-comment>.ws-avatar,.v138-comments .ws-avatar{width:36px!important;height:36px!important;flex:0 0 36px}.v131-comment>div>p,.v138-comments .ws-comment>div>p{display:inline-block!important;background:var(--ws-soft)!important;border-radius:18px!important;padding:8px 11px!important;margin:3px 0!important}.v131-comment .text-btn,.v138-comments .ws-comment .text-btn{font-size:11px;font-weight:700}
 .v131-comment-composer,.v138-comment-composer{position:sticky!important;bottom:0;background:var(--ws-bg)!important;border-top:1px solid var(--ws-line)!important;padding:8px 10px max(8px,env(safe-area-inset-bottom))!important}.v131-comment-composer textarea,.v138-comment-composer textarea{min-height:40px!important;max-height:110px!important;border-radius:22px!important;resize:none!important}
 .v138-comment-composer{display:grid!important;grid-template-columns:36px minmax(0,1fr) auto!important;gap:8px!important;align-items:end!important}.v138-composer-avatar{width:36px!important;height:36px!important;border-radius:50%!important;background:var(--ws-soft,#e4e6eb)!important;display:grid!important;place-items:center!important;font-weight:700!important;overflow:hidden!important}.v138-composer-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}.v138-reply-banner{grid-column:2/4!important;font-size:12px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div{min-width:0!important;max-width:calc(100% - 44px)!important}.v138-comments .ws-comment>div>b{font-size:13px!important}.v138-comments .ws-comment time{font-size:11px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div>p{font-size:14px!important;line-height:1.32!important;width:max-content!important;max-width:100%!important}.typing-indicator{display:flex;align-items:center;gap:7px;min-height:24px;padding:2px 12px;color:var(--ws-muted);font-size:12px}.typing-indicator[hidden]{display:none!important}.typing-dots{display:inline-flex;gap:3px}.typing-dots i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.35;animation:v131typing 1s infinite}.typing-dots i:nth-child(2){animation-delay:.13s}.typing-dots i:nth-child(3){animation-delay:.26s}@keyframes v131typing{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-4px);opacity:1}}.sending{opacity:.65}
-.v131-group-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:9px 0;border:1px solid var(--ws-line);border-radius:15px;background:var(--ws-soft)}.v131-group-toggle span{display:grid;gap:2px}.v131-group-toggle small{color:var(--ws-muted)}.v131-group-toggle input{display:none}.v131-group-toggle i{width:46px;height:26px;border-radius:999px;background:#9ba3ad;position:relative}.v131-group-toggle i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.v131-group-toggle input:checked+i{background:#1877f2}.v131-group-toggle input:checked+i:after{transform:translateX(20px)}
+.v139-group-lock-note{margin:8px 10px;padding:10px 12px;border-radius:12px;background:var(--ws-soft,#f0f2f5);color:var(--ws-muted,#65676b);font-size:12px;line-height:1.35;text-align:center}.v139-group-locked{opacity:.72}.v139-group-locked button[type="submit"]{cursor:not-allowed}.v131-group-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:9px 0;border:1px solid var(--ws-line);border-radius:15px;background:var(--ws-soft)}.v131-group-toggle span{display:grid;gap:2px}.v131-group-toggle small{color:var(--ws-muted)}.v131-group-toggle input{display:none}.v131-group-toggle i{width:46px;height:26px;border-radius:999px;background:#9ba3ad;position:relative}.v131-group-toggle i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.v131-group-toggle input:checked+i{background:#1877f2}.v131-group-toggle input:checked+i:after{transform:translateX(20px)}
 html.ecp-keyboard-open .composer,html.ecp-keyboard-open .ws-composer{transition:none!important;animation:none!important}
 `;document.head.appendChild(css);
 
 facebookShare();backHandler();
-let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
-window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupToggle()},0);
+let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupPermissionGuard();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
+window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupPermissionGuard();groupToggle()},0);
 })();
