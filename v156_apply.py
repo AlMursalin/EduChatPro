@@ -3,6 +3,12 @@ import re, shutil, json
 R=Path('.')
 web=R/'assets/webapp'
 
+# Bring the v1.5.5 runtime layers into the build output first.
+for name in ('v153-runtime.js','v154-runtime.js','v155-runtime.js'):
+    src=Path(__file__).resolve().parent/name
+    if not src.exists(): raise SystemExit(name+' missing')
+    (web/name).write_bytes(src.read_bytes())
+
 # version
 p=R/'pubspec.yaml'; s=p.read_text(); s=re.sub(r'^version:.*$','version: 1.5.6+56',s,flags=re.M); p.write_text(s)
 
