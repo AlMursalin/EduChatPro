@@ -19,28 +19,13 @@ function db(){
 async function get(store,key){try{const d=await db();return await new Promise((res,rej)=>{const r=d.transaction(store,'readonly').objectStore(store).get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}catch{return null}}
 async function put(store,value){try{const d=await db();return await new Promise((res,rej)=>{const r=d.transaction(store,'readwrite').objectStore(store).put(value);r.onsuccess=()=>res(value);r.onerror=()=>rej(r.error)})}catch{return null}}
 async function del(store,key){try{const d=await db();return await new Promise((res,rej)=>{const r=d.transaction(store,'readwrite').objectStore(store).delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}catch{}}
-const photoUrls=new Map(),photoRefresh=new Map();
+const photoUrls=new Map();
 const pkey=(bucket,path)=>bucket+'|'+path;
 function blobUrl(key,blob){
   const hit=photoUrls.get(key);if(hit)return hit;
   const u=URL.createObjectURL(blob);photoUrls.set(key,u);return u;
 }
 async function fetchBlob(url){const r=await fetch(url,{cache:'force-cache'});if(!r.ok)throw new Error('Photo '+r.status);return await r.blob()}
-async function refreshPhoto(orig,sb,user,bucket,path,cached){
-  const key=pkey(bucket,path);if(photoRefresh.has(key))return;
-  const task=(async()=>{try{
-    const signed=await orig(sb,user,bucket,path);
-    const blob=await fetchBlob(signed);
-    if(!cached||cached.size!==blob.size||cached.type!==blob.type){
-      const old=photoUrls.get(key);if(old){URL.revokeObjectURL(old);photoUrls.delete(key)}
-      await put('photos',{key,bucket,path,blob,size:blob.size,type:blob.type,checkedAt:Date.now()});
-      window.dispatchEvent(new CustomEvent('ecp-photo-cache-updated',{detail:{bucket,path,url:blobUrl(key,blob)}}));
-    }else if(Date.now()-(cached.checkedAt||0)>6*60*60*1000){
-      await put('photos',{...cached,checkedAt:Date.now()});
-    }
-  }catch{}finally{photoRefresh.delete(key)}})();
-  photoRefresh.set(key,task);
-}
 async function installPhotoCache(){
   const P=window.EduPhotos;if(!P?.get||P.__persistentV150)return;
   P.__persistentV150=true;
@@ -48,10 +33,7 @@ async function installPhotoCache(){
   P.get=async(sb,user,bucket,path)=>{
     if(!path)return orig(sb,user,bucket,path);
     const key=pkey(bucket,path),cached=await get('photos',key);
-    if(cached?.blob){
-      if(Date.now()-(cached.checkedAt||0)>6*60*60*1000)refreshPhoto(orig,sb,user,bucket,path,cached);
-      return blobUrl(key,cached.blob);
-    }
+    if(cached?.blob)return blobUrl(key,cached.blob);
     const signed=await orig(sb,user,bucket,path);
     try{
       const blob=await fetchBlob(signed);
@@ -62,7 +44,7 @@ async function installPhotoCache(){
   P.peek=async(bucket,path)=>{const c=await get('photos',pkey(bucket,path));return c?.blob?blobUrl(pkey(bucket,path),c.blob):''};
   P.invalidate=async(bucket,path)=>{const key=pkey(bucket,path),u=photoUrls.get(key);if(u){URL.revokeObjectURL(u);photoUrls.delete(key)}await del('photos',key)};
 }
-window.EduPersistentCache={version:150,get,put,del,installPhotoCache};
+window.EduPersistentCache={version:151,get,put,del,installPhotoCache};
 installPhotoCache();
 const timer=setInterval(()=>installPhotoCache(),1000);setTimeout(()=>clearInterval(timer),30000);
 })();
