@@ -90,6 +90,26 @@ replacement='''  Future<void> toggleScreen() async {
   }
 '''
 s=s[:start]+replacement+s[end:]
+
+# Always stop screen capture/background service when the meeting page is disposed.
+dispose_marker='  @override\n  void dispose() {'
+if dispose_marker in s and 'v141 mobile screen-share cleanup' not in s:
+    cleanup='''  // v141 mobile screen-share cleanup
+  @override
+  void dispose() {
+    try {
+      if (backend.screenEnabled) {
+        backend.shareScreen(false);
+      }
+      if (!kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android &&
+          FlutterBackground.isBackgroundExecutionEnabled) {
+        FlutterBackground.disableBackgroundExecution();
+      }
+    } catch (_) {}
+'''
+    s=s.replace(dispose_marker,cleanup,1)
+
 p.write_text(s)
 
 print('Applied EduChatPro v1.4.1 polls/group-call/cache/history/comment/link patch')
