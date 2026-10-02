@@ -121,7 +121,7 @@ jobs:
           grep '^version:' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
 
-      - name: Apply v1.4.2 mobile screen share polls group call cache navigation forum and link fix
+      - name: Apply v1.4.3 mobile screen share polls group call cache navigation forum and link fix
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
@@ -135,13 +135,12 @@ jobs:
           grep -q "v138-comment-composer" assets/webapp/v131-runtime.js
           grep -q "Texting or calling is not allowed in this group" assets/webapp/v131-runtime.js
           grep -q "ecp-clickable-link" assets/webapp/v131-runtime.js
-          grep -q "function groupPolls" assets/webapp/v131-runtime.js
-          grep -q "Texting or calling is not allowed in this group" assets/webapp/v131-runtime.js
           grep -q "v141-polls" assets/webapp/v131-runtime.js
           grep -q "group_polls" assets/webapp/v131-runtime.js
           grep -q "v141 mobile screen-share cleanup" lib/features/meetings/meeting_room_page.dart
           grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" android/app/src/main/AndroidManifest.xml
           grep -q "Group calling is disabled for members" "$GITHUB_WORKSPACE/v130_client_apply.py"
+          grep -q "ecp_guard_group_call_create" "$GITHUB_WORKSPACE/v141_group_poll_call_migration.sql"
           node --check assets/webapp/native-mobile-patch.js
 
       - name: Inspect meeting chat handler
@@ -167,6 +166,6 @@ jobs:
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.4.2-arm64-v8a
+          name: EduChatPro-v1.4.3-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
