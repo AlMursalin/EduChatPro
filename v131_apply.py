@@ -6,7 +6,7 @@ R=Path('.')
 # Version
 p=R/'pubspec.yaml'
 s=p.read_text()
-s=re.sub(r'^version:.*$', 'version: 1.4.1+40', s, flags=re.M)
+s=re.sub(r'^version:.*$', 'version: 1.4.2+41', s, flags=re.M)
 p.write_text(s)
 
 # Inject persistent photo cache + final mobile runtime after all app functions exist.
@@ -112,4 +112,4 @@ if dispose_marker in s and 'v141 mobile screen-share cleanup' not in s:
 
 p.write_text(s)
 
-print('Applied EduChatPro v1.4.1 polls/group-call/cache/history/comment/link patch')
+print('Applied EduChatPro v1.4.2 mobile-screen-share/polls/group-call/cache/history/comment/link patch')
