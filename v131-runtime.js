@@ -114,9 +114,9 @@ function groupToggle(){
  const info=q('.group-info');if(!info||info.querySelector('.v131-group-toggle')||!S?.group)return;
  const g=S.group,wrap=document.createElement('label');wrap.className='v131-group-toggle';
  if(S.role==='super_admin'){
-   wrap.innerHTML='<span><b>Member messaging</b><small>Student text, file & voice</small></span><input type="checkbox" '+(g.allow_member_messaging?'checked':'')+'><i></i>';
-   wrap.querySelector('input').onchange=async e=>{const next=e.target.checked;e.target.disabled=true;const r=await sb.from('groups').update({allow_member_messaging:next}).eq('id',g.id);e.target.disabled=false;if(r.error){e.target.checked=!next;window.EduUI?.toast(r.error.message,'error')}else{g.allow_member_messaging=next;window.EduUI?.toast(next?'Member messaging enabled':'Read-only for students','ok')}};
- }else wrap.innerHTML='<span><b>'+ (g.allow_member_messaging?'Members can send messages':'Read-only for students') +'</b><small>Only Super Admin can change this</small></span>';
+   wrap.innerHTML='<span><b>Member messaging & calls</b><small>ON: text, files, voice & group calls · OFF: read/download/join only</small></span><input type="checkbox" '+(g.allow_member_messaging?'checked':'')+'><i></i>';
+   wrap.querySelector('input').onchange=async e=>{const next=e.target.checked;e.target.disabled=true;const r=await sb.from('groups').update({allow_member_messaging:next}).eq('id',g.id);e.target.disabled=false;if(r.error){e.target.checked=!next;window.EduUI?.toast(r.error.message,'error')}else{g.allow_member_messaging=next;window.EduUI?.toast(next?'Members can send and start group calls':'Members are read/download/join only','ok')}};
+ }else wrap.innerHTML='<span><b>'+ (g.allow_member_messaging?'Members can send and call':'Members can only read/download/join') +'</b><small>Only Super Admin can change this</small></span>';
  const p=info.querySelector('p');(p?.parentNode||info).insertBefore(wrap,p?.nextSibling||info.firstChild);
 }
 
