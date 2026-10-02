@@ -226,14 +226,22 @@ jobs:
           node --check assets/webapp/v154-runtime.js
           node --check assets/webapp/v155-runtime.js
           node --check assets/webapp/v156-runtime.js
-          grep -q 'version: 1.5.6+56' pubspec.yaml
-          grep -q 'v156-runtime.js' assets/webapp/index.html
-          grep -q 'ecp156-poll-button' assets/webapp/v156-runtime.js
-          grep -q 'Allow member messaging and calling' assets/webapp/index.html
-          grep -q 'set_group_member_permissions' assets/webapp/index.html
-          grep -q 'ecp-forum-cache' assets/webapp/index.html
-          grep -q 'window.EduPollUI' assets/webapp/v152-runtime.js
-          grep -q 'v1.5.6 back' assets/webapp/v156-runtime.js
+          python - <<'PY'
+          from pathlib import Path
+          checks={
+            'version': 'version: 1.5.6+56' in Path('pubspec.yaml').read_text(),
+            'runtime-tag': 'v156-runtime.js' in Path('assets/webapp/index.html').read_text(),
+            'poll-button': 'ecp156-poll-button' in Path('assets/webapp/v156-runtime.js').read_text(),
+            'group-setting': 'Allow member messaging and calling' in Path('assets/webapp/index.html').read_text(),
+            'group-rpc': 'set_group_member_permissions' in Path('assets/webapp/index.html').read_text(),
+            'forum-cache': 'ecp-forum-cache' in Path('assets/webapp/index.html').read_text(),
+            'poll-export': 'window.EduPollUI' in Path('assets/webapp/v152-runtime.js').read_text(),
+            'back-history': 'v1.5.6 back' in Path('assets/webapp/v156-runtime.js').read_text(),
+          }
+          print(checks)
+          missing=[k for k,v in checks.items() if not v]
+          if missing: raise SystemExit('Missing v1.5.6 markers: '+', '.join(missing))
+          PY
 
       - name: Clean previous Flutter build
         working-directory: ${{ env.APP_DIR }}
