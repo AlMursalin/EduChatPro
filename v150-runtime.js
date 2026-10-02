@@ -57,12 +57,43 @@ window.EduMobileBackSafe=window.EduMobileBack;
 // Cache the visible inbox immediately; background RPC remains free to refresh it.
 function cacheThreadList(){
   const list=q('#thread-list'),user=Sx()?.user?.id;if(!list||!user||!list.children.length)return;
-  try{localStorage.setItem('ecp-v150-thread-html:'+user,list.innerHTML)}catch{}
+  try{
+    const clone=list.cloneNode(true);
+    qa('img[data-photo],img[data-group-photo]',clone).forEach(img=>{
+      const bucket=img.dataset.bucket||(img.dataset.groupPhoto?'group-images':'avatars');
+      const path=img.dataset.photo||img.dataset.groupPhoto;
+      const thumb=window.EduPhotos?.peekSync?.(bucket,path)||'';
+      if(thumb)img.setAttribute('src',thumb);else img.removeAttribute('src');
+    });
+    localStorage.setItem('ecp-v150-thread-html:'+user,clone.innerHTML);
+  }catch{}
 }
 function restoreThreadList(){
   const list=q('#thread-list'),user=Sx()?.user?.id;if(!list||!user||list.children.length)return;
-  try{const html=localStorage.getItem('ecp-v150-thread-html:'+user);if(html){list.innerHTML=html;list.dataset.ecpCached='1'}}catch{}
+  try{
+    const html=localStorage.getItem('ecp-v150-thread-html:'+user);
+    if(html){list.innerHTML=html;list.dataset.ecpCached='1';window.EduWorkspace?.photos?.(list,window.sb);window.hydrateAvatars?.(list);window.hydrateGroupImages?.(list);}
+  }catch{}
 }
+function cacheForumFeed(){
+  const list=q('#forum-posts'),user=Sx()?.user?.id;if(!list||!user||!list.children.length)return;
+  try{
+    const clone=list.cloneNode(true);
+    qa('img[data-photo]',clone).forEach(img=>{
+      const thumb=window.EduPhotos?.peekSync?.(img.dataset.bucket||'avatars',img.dataset.photo)||'';
+      if(thumb)img.setAttribute('src',thumb);else img.removeAttribute('src');
+    });
+    localStorage.setItem('ecp-v151-forum-html:'+user,clone.innerHTML);
+  }catch{}
+}
+function restoreForumFeed(){
+  const list=q('#forum-posts'),user=Sx()?.user?.id;if(!list||!user||list.children.length)return;
+  try{
+    const html=localStorage.getItem('ecp-v151-forum-html:'+user);
+    if(html){list.innerHTML=html;list.dataset.ecpCached='1';window.EduWorkspace?.photos?.(list,window.sb);}
+  }catch{}
+}
+
 document.addEventListener('click',e=>{
   const b=e.target.closest?.('#thread-list[data-ecp-cached="1"] [data-thread]');
   if(!b)return;
@@ -176,6 +207,13 @@ async function loadPolls(){
   }catch(e){panel.innerHTML='<p class="danger-text">Polls could not load.</p>';console.warn(e)}
   finally{pollLoading=false}
 }
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest?.('#group-poll-open');if(!b)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const open=()=>q('#ecp-new-poll')?.click();
+  if(q('#ecp-new-poll'))open();else loadPolls().then(open).catch(()=>{});
+},true);
 
 // Facebook-like comment sheet and comment reactions.
 let commentBusy=false;
