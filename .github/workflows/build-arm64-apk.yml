@@ -20,8 +20,9 @@ on:
       - 'v150-cache.js'
       - 'v150-runtime.js'
       - 'v150_apply.py'
-      - 'v151-runtime.js'
-      - 'v151_apply.py'
+      - 'v152-runtime.js'
+      - 'v152_apply.py'
+      - 'v152_poll_permission_migration.sql'
 
 jobs:
   build:
@@ -182,30 +183,30 @@ jobs:
           print('v1.5.0 source markers verified')
           PY
 
-      - name: Apply v1.5.1 targeted cache realtime back and group-settings fixes
+
+      - name: Apply v1.5.2 Poll attachment and exact Android Back patch
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
           set -e
-          python "$GITHUB_WORKSPACE/v151_apply.py"
+          python "$GITHUB_WORKSPACE/v152_apply.py"
           grep '^version:' pubspec.yaml
-          node --check assets/webapp/v150-cache.js
-          node --check assets/webapp/v151-runtime.js
-          grep -q 'ecp-thread-cache-v151' assets/webapp/index.html
-          grep -q 'ecp-forum-v151' assets/webapp/index.html
-          grep -q 'settings-allow-chat' assets/webapp/index.html
-          grep -q 'Messaging is not allowed for members in this group' assets/webapp/index.html
-          grep -q 'v151-runtime.js' assets/webapp/index.html
-          grep -q 'version: 1.5.1+51' pubspec.yaml
+          node --check assets/webapp/v152-runtime.js
+          grep -q 'version: 1.5.2+52' pubspec.yaml
+          grep -q 'v152-runtime.js' assets/webapp/index.html
+          grep -q 'data-ecp152-attach="poll"' assets/webapp/v152-runtime.js
+          grep -q 'Poll creation is not allowed while member messaging is disabled.' assets/webapp/v152-runtime.js
+          grep -q "if(['saved','notifications','meetings'].includes(current))return go('chats')" assets/webapp/v152-runtime.js
+          grep -q "if(['chats','groups','people'].includes(current))return go('forum')" assets/webapp/v152-runtime.js
+          grep -q 'const returnToChats=!!(S.group||S.direct);' assets/webapp/index.html
           python - <<'PY'
           from pathlib import Path
           s=Path('assets/webapp/index.html').read_text()
-          assert 'function paintThreadList' in s
-          assert 'function paintForum' in s
-          assert "id:'local-'+crypto.randomUUID()" in s
-          assert 'settings-allow-chat' in s
-          assert s.index('native-mobile-patch.js') < s.index('v151-runtime.js')
-          print('v1.5.1 targeted source markers verified')
+          assert 'v151-runtime.js' not in s, 'v1.5.1 must not be included'
+          assert s.index('v150-runtime.js') < s.index('v152-runtime.js')
+          r=Path('assets/webapp/v150-runtime.js').read_text()
+          assert 'installGroupToggle();loadPolls();enhanceComments();' not in r
+          print('v1.5.2 targeted source markers verified')
           PY
 
       - name: Clean previous Flutter build
@@ -231,7 +232,7 @@ jobs:
           WEB=/tmp/ecp-apk/assets/flutter_assets/assets/webapp
           test -f "$WEB/v150-cache.js"
           test -f "$WEB/v150-runtime.js"
-          test -f "$WEB/v151-runtime.js"
+          test -f "$WEB/v152-runtime.js"
           grep -q 'ecp-chat-v150' "$WEB/index.html"
           grep -q 'data-comment-id' "$WEB/index.html"
           grep -q 'v150-runtime.js' "$WEB/index.html"
@@ -239,16 +240,18 @@ jobs:
           grep -q 'ecp-facebook-comments' "$WEB/v150-runtime.js"
           grep -q 'Texting or calling is not allowed in this group' "$WEB/v150-runtime.js"
           grep -q 'Polls' "$WEB/v150-runtime.js"
+          grep -q 'v152-runtime.js' "$WEB/index.html"
+          grep -q 'data-ecp152-attach="poll"' "$WEB/v152-runtime.js"
+          grep -q 'v1.5.2 back' "$WEB/v152-runtime.js"
+          grep -q 'const returnToChats=!!(S.group||S.direct);' "$WEB/index.html"
           grep -q 'ecp-thread-cache-v151' "$WEB/index.html"
           grep -q 'ecp-forum-v151' "$WEB/index.html"
           grep -q 'settings-allow-chat' "$WEB/index.html"
-          grep -q 'v151-runtime.js' "$WEB/index.html"
-          grep -q 'v1.5.1 back' "$WEB/v151-runtime.js"
           echo "Final APK runtime markers verified"
 
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.5.1-arm64-v8a
+          name: EduChatPro-v1.5.2-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
