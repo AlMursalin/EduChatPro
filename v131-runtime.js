@@ -103,13 +103,13 @@ function linkifyMessages(root=document){
  const selectors='.bodytext,.message .bodytext,.ws-post-body,.ws-comment p,.chat-message-text,.message-text';
  qa(selectors,root).forEach(box=>{
    if(box.dataset.v140Links==='1')return;box.dataset.v140Links='1';
-   const walker=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement?.closest('a,button,code,pre')?NodeFilter.FILTER_REJECT:/((https?:\\/\\/|www\\.)[^\\s<]+)/i.test(n.nodeValue||'')?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT});
+   const walker=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement?.closest('a,button,code,pre')?NodeFilter.FILTER_REJECT:/((https?:\/\/|www\.)[^\s<]+)/i.test(n.nodeValue||'')?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT});
    const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
    for(const n of nodes){
      const text=n.nodeValue||'',frag=document.createDocumentFragment();let last=0;
-     text.replace(/((?:https?:\\/\\/|www\\.)[^\\s<]+)/gi,(raw,_m,offset)=>{
+     text.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi,(raw,_m,offset)=>{
        if(offset>last)frag.append(document.createTextNode(text.slice(last,offset)));
-       const a=document.createElement('a');const href=/^www\\./i.test(raw)?'https://'+raw:raw;
+       const a=document.createElement('a');const href=/^www\./i.test(raw)?'https://'+raw:raw;
        a.href=href;a.textContent=raw;a.className='ecp-clickable-link';a.rel='noopener noreferrer';a.dataset.ecpLink='1';frag.append(a);last=offset+raw.length;return raw;
      });
      if(last<text.length)frag.append(document.createTextNode(text.slice(last)));n.replaceWith(frag);
