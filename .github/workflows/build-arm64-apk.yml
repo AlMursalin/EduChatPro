@@ -16,6 +16,7 @@ on:
       - 'v131-runtime.js'
       - 'v131_apply.py'
       - 'v130_client_apply.py'
+      - 'v141_group_poll_call_migration.sql'
 
 jobs:
   build:
@@ -134,6 +135,8 @@ jobs:
           grep -q "v138-comment-composer" assets/webapp/v131-runtime.js
           grep -q "Texting or calling is not allowed in this group" assets/webapp/v131-runtime.js
           grep -q "ecp-clickable-link" assets/webapp/v131-runtime.js
+          grep -q "function groupPolls" assets/webapp/v131-runtime.js
+          grep -q "Texting or calling is not allowed in this group" assets/webapp/v131-runtime.js
           grep -q "v141-polls" assets/webapp/v131-runtime.js
           grep -q "group_polls" assets/webapp/v131-runtime.js
           grep -q "v141 mobile screen-share cleanup" lib/features/meetings/meeting_room_page.dart
