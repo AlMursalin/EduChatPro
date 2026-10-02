@@ -79,9 +79,12 @@ src=Path(__file__).resolve().parent/'v156-runtime.js'
 if not src.exists(): raise SystemExit('v156-runtime.js missing')
 (web/'v156-runtime.js').write_bytes(src.read_bytes())
 
-# Inject final runtime last.
-p=web/'index.html'; s=p.read_text(); marker='<script src="v155-runtime.js"></script>'
-if marker in s and '<script src="v156-runtime.js"></script>' not in s:s=s.replace(marker,marker+'<script src="v156-runtime.js"></script>',1)
+# Inject v1.5.3-v1.5.6 runtimes after v1.5.2, with v1.5.6 last so its Back behavior wins.
+p=web/'index.html'; s=p.read_text(); marker='<script src="v152-runtime.js"></script>'
+for n in ('v153-runtime.js','v154-runtime.js','v155-runtime.js','v156-runtime.js'):
+    s=s.replace(f'<script src="{n}"></script>','')
+if marker not in s: raise SystemExit('v152 runtime marker missing')
+s=s.replace(marker,marker+'<script src="v153-runtime.js"></script><script src="v154-runtime.js"></script><script src="v155-runtime.js"></script><script src="v156-runtime.js"></script>',1)
 p.write_text(s)
 
 print('Applied EduChatPro v1.5.6 requested fixes to actual bundled source')
