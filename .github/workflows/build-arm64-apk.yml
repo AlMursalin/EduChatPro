@@ -196,8 +196,8 @@ jobs:
           grep -q 'v152-runtime.js' assets/webapp/index.html
           grep -q 'data-ecp152-attach="poll"' assets/webapp/v152-runtime.js
           grep -q 'Poll creation is not allowed while member messaging is disabled.' assets/webapp/v152-runtime.js
-          grep -q "if(['saved','notifications','meetings'].includes(current))return go('chats')" assets/webapp/v152-runtime.js
-          grep -q "if(['chats','groups','people'].includes(current))return go('forum')" assets/webapp/v152-runtime.js
+          grep -Fq "if(['saved','notifications','meetings'].includes(current))return go('chats')" assets/webapp/v152-runtime.js
+          grep -Fq "if(['chats','groups','people'].includes(current))return go('forum')" assets/webapp/v152-runtime.js
           grep -q 'const returnToChats=!!(S.group||S.direct);' assets/webapp/index.html
           python - <<'PY'
           from pathlib import Path
