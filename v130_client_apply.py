@@ -13,7 +13,7 @@ for name in ['assets/webapp/index.html','assets/webapp/app-web118.js','assets/we
     s=s.replace("item.kind==='direct'||item.allow_member_messaging||item.created_by===myId||c.can('groups.manage')",
                 "item.kind==='direct'||item.allow_member_messaging||c.isAdmin()")
     old="${W.button('search','Search messages','id=\"message-search-toggle\"')}${W.button('video','Start video call','id=\"chat-video\"')}${W.button('phone','Start audio call','id=\"chat-audio\"')}"
-    new="${W.button('search','Search messages','id=\"message-search-toggle\"')}${item.kind==='direct'||c.isAdmin()?W.button('video','Start video call','id=\"chat-video\"'):''}${item.kind==='direct'||c.isAdmin()?W.button('phone','Start audio call','id=\"chat-audio\"'):''}"
+    new="${W.button('search','Search messages','id=\"message-search-toggle\"')}${item.kind==='direct'||item.allow_member_messaging||c.isAdmin()?W.button('video','Start video call','id=\"chat-video\"'):''}${item.kind==='direct'||item.allow_member_messaging||c.isAdmin()?W.button('phone','Start audio call','id=\"chat-audio\"'):''}"
     s=s.replace(old,new)
     s=s.replace("!g.allow_member_messaging&&!can('groups.manage')&&g.created_by!==S.user.id","!g.allow_member_messaging&&!isAdmin()")
     s=s.replace("!g.allow_member_messaging&&!isAdmin()&&g.created_by!==S.user.id","!g.allow_member_messaging&&!isAdmin()")
@@ -23,11 +23,11 @@ for name in ['assets/webapp/index.html','assets/webapp/app-web118.js','assets/we
     s=s.replace("const box=group?U.q('#group-body'):U.q('#page'),allowed=can('meetings.create')||group?.created_by===S.user.id;",
                 "const box=group?U.q('#group-body'):U.q('#page'),allowed=group?isAdmin():can('meetings.create');")
     s=s.replace("startCall:async(item,audio)=>{S.group=item.kind==='group'?item:null;S.direct=item.kind==='direct'?item.peer_id:null;let m;if(item.kind==='direct'){",
-                "startCall:async(item,audio)=>{if(item.kind==='group'&&!isAdmin())throw new Error('Only Admin or Super Admin can start a group call.');S.group=item.kind==='group'?item:null;S.direct=item.kind==='direct'?item.peer_id:null;let m;if(item.kind==='direct'){")
+                "startCall:async(item,audio)=>{if(item.kind==='group'&&!item.allow_member_messaging&&!isAdmin())throw new Error('Group calling is disabled for members.');S.group=item.kind==='group'?item:null;S.direct=item.kind==='direct'?item.peer_id:null;let m;if(item.kind==='direct'){")
     s=s.replace("${can('groups.manage')||g.created_by===S.user.id?'':'disabled'}><span>Allow members to chat and upload permitted files</span>",
                 "${isSuper()?'':'disabled'}><span>Allow member texting / files / voice</span>")
     s=s.replace("<p class=\"hint\">When off, regular members can read existing content but cannot send messages or upload files.</p>",
-                "<p class=\"hint\">Only Super Admin can change this. OFF: students can read messages, download files, listen to voice messages and join group calls, but cannot send text/files/voice or start a group call. Admin and Super Admin can still post and start group calls.</p>")
+                "<p class=\"hint\">Only Super Admin can change this. ON: members can send text/files/voice and start group calls. OFF: members can only read, download files, listen to voice messages and join active calls/meetings; only Admin/Super Admin can send, start group calls or create meetings.</p>")
     s=s.replace("U.q('#allow-chat')?.addEventListener('change',async e=>{const {error}=await sb.from('groups').update({allow_member_messaging:e.target.checked}).eq('id',g.id);",
                 "U.q('#allow-chat')?.addEventListener('change',async e=>{if(!isSuper()){e.target.checked=g.allow_member_messaging;U.toast('Only Super Admin can change member texting.','error');return;}const {error}=await sb.from('groups').update({allow_member_messaging:e.target.checked}).eq('id',g.id);")
     p.write_text(s)
