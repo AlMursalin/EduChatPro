@@ -202,7 +202,7 @@ jobs:
           s=Path('assets/webapp/index.html').read_text()
           assert 'function paintThreadList' in s
           assert 'function paintForum' in s
-          assert 'local-'+"crypto.randomUUID()" in s
+          assert "id:'local-'+crypto.randomUUID()" in s
           assert 'settings-allow-chat' in s
           assert s.index('native-mobile-patch.js') < s.index('v151-runtime.js')
           print('v1.5.1 targeted source markers verified')
