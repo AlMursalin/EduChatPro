@@ -23,6 +23,11 @@ on:
       - 'v152-runtime.js'
       - 'v152_apply.py'
       - 'v152_poll_permission_migration.sql'
+      - 'v156_apply.py'
+      - 'v156-runtime.js'
+      - 'v155-runtime.js'
+      - 'v154-runtime.js'
+      - 'v153-runtime.js'
 
 jobs:
   build:
@@ -209,6 +214,27 @@ jobs:
           print('v1.5.2 targeted source markers verified')
           PY
 
+      - name: Apply v1.5.6 uploaded-app fixes
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          python "$GITHUB_WORKSPACE/v156_apply.py"
+          grep '^version:' pubspec.yaml
+          node --check assets/webapp/v152-runtime.js
+          node --check assets/webapp/v153-runtime.js
+          node --check assets/webapp/v154-runtime.js
+          node --check assets/webapp/v155-runtime.js
+          node --check assets/webapp/v156-runtime.js
+          grep -q 'version: 1.5.6+56' pubspec.yaml
+          grep -q 'v156-runtime.js' assets/webapp/index.html
+          grep -q 'ecp156-poll-button' assets/webapp/v156-runtime.js
+          grep -q 'Allow member messaging and calling' assets/webapp/index.html
+          grep -q 'set_group_member_permissions' assets/webapp/index.html
+          grep -q 'ecp-forum-cache' assets/webapp/index.html
+          grep -q 'window.EduPollUI' assets/webapp/v152-runtime.js
+          grep -q 'v1.5.6 back' assets/webapp/v156-runtime.js
+
       - name: Clean previous Flutter build
         working-directory: ${{ env.APP_DIR }}
         run: flutter clean
@@ -233,6 +259,10 @@ jobs:
           test -f "$WEB/v150-cache.js"
           test -f "$WEB/v150-runtime.js"
           test -f "$WEB/v152-runtime.js"
+          test -f "$WEB/v153-runtime.js"
+          test -f "$WEB/v154-runtime.js"
+          test -f "$WEB/v155-runtime.js"
+          test -f "$WEB/v156-runtime.js"
           grep -q 'ecp-chat-v150' "$WEB/index.html"
           grep -q 'data-comment-id' "$WEB/index.html"
           grep -q 'v150-runtime.js' "$WEB/index.html"
@@ -243,12 +273,16 @@ jobs:
           grep -q 'v152-runtime.js' "$WEB/index.html"
           grep -q 'data-ecp152-attach="poll"' "$WEB/v152-runtime.js"
           grep -q 'v1.5.2 back' "$WEB/v152-runtime.js"
+          grep -q 'ecp156-poll-button' "$WEB/v156-runtime.js"
+          grep -q 'Allow member messaging and calling' "$WEB/index.html"
+          grep -q 'ecp-forum-cache' "$WEB/index.html"
+          grep -q 'v156-runtime.js' "$WEB/index.html"
           grep -q 'const returnToChats=!!(S.group||S.direct);' "$WEB/index.html"
           echo "Final APK runtime markers verified"
 
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.5.2-arm64-v8a
+          name: EduChatPro-v1.5.6-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
