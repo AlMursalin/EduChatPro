@@ -99,6 +99,42 @@ async function hydrateAllAvatars(root=document){
 window.hydrateAvatars=hydrateAllAvatars;
 window.addEventListener('educhat-avatar-updated',e=>{const d=e.detail||{};qa('[data-avatar-path]').filter(n=>n.dataset.avatarPath===d.path).forEach(n=>{let img=n.matches('img')?n:n.querySelector('img');if(!img){img=document.createElement('img');n.prepend(img)}if(d.url&&img.src!==d.url)img.src=d.url})});
 
+function linkifyMessages(root=document){
+ const selectors='.bodytext,.message .bodytext,.ws-post-body,.ws-comment p,.chat-message-text,.message-text';
+ qa(selectors,root).forEach(box=>{
+   if(box.dataset.v140Links==='1')return;box.dataset.v140Links='1';
+   const walker=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement?.closest('a,button,code,pre')?NodeFilter.FILTER_REJECT:/((https?:\\/\\/|www\\.)[^\\s<]+)/i.test(n.nodeValue||'')?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT});
+   const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+   for(const n of nodes){
+     const text=n.nodeValue||'',frag=document.createDocumentFragment();let last=0;
+     text.replace(/((?:https?:\\/\\/|www\\.)[^\\s<]+)/gi,(raw,_m,offset)=>{
+       if(offset>last)frag.append(document.createTextNode(text.slice(last,offset)));
+       const a=document.createElement('a');const href=/^www\\./i.test(raw)?'https://'+raw:raw;
+       a.href=href;a.textContent=raw;a.className='ecp-clickable-link';a.rel='noopener noreferrer';a.dataset.ecpLink='1';frag.append(a);last=offset+raw.length;return raw;
+     });
+     if(last<text.length)frag.append(document.createTextNode(text.slice(last)));n.replaceWith(frag);
+   }
+ });
+}
+function bindLinkNavigation(){
+ if(document.documentElement.dataset.v140Links)return;document.documentElement.dataset.v140Links='1';
+ document.addEventListener('click',e=>{
+   const a=e.target.closest?.('a[data-ecp-link],a[href^="http://"],a[href^="https://"]');if(!a)return;
+   const href=a.href;if(!href)return;
+   e.preventDefault();e.stopImmediatePropagation();
+   try{
+     const u=new URL(href,location.href);
+     if(u.origin===location.origin){
+       const target=u.searchParams.get('page');
+       if(target&&typeof window.navigate==='function'){window.navigate(target);return}
+       location.assign(u.href);return;
+     }
+     location.assign(u.href);
+   }catch{location.href=href}
+ },true);
+}
+bindLinkNavigation();
+
 function facebookShare(){
  document.addEventListener('click',async e=>{
    const b=e.target.closest?.('[data-share]');if(!b||b.closest('.meeting-shell'))return;
@@ -176,11 +212,11 @@ const css=document.createElement('style');css.textContent=`
 .v131-comment>.ws-avatar,.v138-comments .ws-avatar{width:36px!important;height:36px!important;flex:0 0 36px}.v131-comment>div>p,.v138-comments .ws-comment>div>p{display:inline-block!important;background:var(--ws-soft)!important;border-radius:18px!important;padding:8px 11px!important;margin:3px 0!important}.v131-comment .text-btn,.v138-comments .ws-comment .text-btn{font-size:11px;font-weight:700}
 .v131-comment-composer,.v138-comment-composer{position:sticky!important;bottom:0;background:var(--ws-bg)!important;border-top:1px solid var(--ws-line)!important;padding:8px 10px max(8px,env(safe-area-inset-bottom))!important}.v131-comment-composer textarea,.v138-comment-composer textarea{min-height:40px!important;max-height:110px!important;border-radius:22px!important;resize:none!important}
 .v138-comment-composer{display:grid!important;grid-template-columns:36px minmax(0,1fr) auto!important;gap:8px!important;align-items:end!important}.v138-composer-avatar{width:36px!important;height:36px!important;border-radius:50%!important;background:var(--ws-soft,#e4e6eb)!important;display:grid!important;place-items:center!important;font-weight:700!important;overflow:hidden!important}.v138-composer-avatar img{width:100%!important;height:100%!important;object-fit:cover!important}.v138-reply-banner{grid-column:2/4!important;font-size:12px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div{min-width:0!important;max-width:calc(100% - 44px)!important}.v138-comments .ws-comment>div>b{font-size:13px!important}.v138-comments .ws-comment time{font-size:11px!important;color:var(--ws-muted,#65676b)!important}.v138-comments .ws-comment>div>p{font-size:14px!important;line-height:1.32!important;width:max-content!important;max-width:100%!important}.typing-indicator{display:flex;align-items:center;gap:7px;min-height:24px;padding:2px 12px;color:var(--ws-muted);font-size:12px}.typing-indicator[hidden]{display:none!important}.typing-dots{display:inline-flex;gap:3px}.typing-dots i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.35;animation:v131typing 1s infinite}.typing-dots i:nth-child(2){animation-delay:.13s}.typing-dots i:nth-child(3){animation-delay:.26s}@keyframes v131typing{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-4px);opacity:1}}.sending{opacity:.65}
-.v139-group-lock-note{margin:8px 10px;padding:10px 12px;border-radius:12px;background:var(--ws-soft,#f0f2f5);color:var(--ws-muted,#65676b);font-size:12px;line-height:1.35;text-align:center}.v139-group-locked{opacity:.72}.v139-group-locked button[type="submit"]{cursor:not-allowed}.v131-group-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:9px 0;border:1px solid var(--ws-line);border-radius:15px;background:var(--ws-soft)}.v131-group-toggle span{display:grid;gap:2px}.v131-group-toggle small{color:var(--ws-muted)}.v131-group-toggle input{display:none}.v131-group-toggle i{width:46px;height:26px;border-radius:999px;background:#9ba3ad;position:relative}.v131-group-toggle i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.v131-group-toggle input:checked+i{background:#1877f2}.v131-group-toggle input:checked+i:after{transform:translateX(20px)}
+.ecp-clickable-link{color:#1877f2!important;text-decoration:none!important;overflow-wrap:anywhere!important;word-break:break-word!important}.ecp-clickable-link:active{text-decoration:underline!important}.v139-group-lock-note{margin:8px 10px;padding:10px 12px;border-radius:12px;background:var(--ws-soft,#f0f2f5);color:var(--ws-muted,#65676b);font-size:12px;line-height:1.35;text-align:center}.v139-group-locked{opacity:.72}.v139-group-locked button[type="submit"]{cursor:not-allowed}.v131-group-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:9px 0;border:1px solid var(--ws-line);border-radius:15px;background:var(--ws-soft)}.v131-group-toggle span{display:grid;gap:2px}.v131-group-toggle small{color:var(--ws-muted)}.v131-group-toggle input{display:none}.v131-group-toggle i{width:46px;height:26px;border-radius:999px;background:#9ba3ad;position:relative}.v131-group-toggle i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.v131-group-toggle input:checked+i{background:#1877f2}.v131-group-toggle input:checked+i:after{transform:translateX(20px)}
 html.ecp-keyboard-open .composer,html.ecp-keyboard-open .ws-composer{transition:none!important;animation:none!important}
 `;document.head.appendChild(css);
 
 facebookShare();backHandler();
-let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupPermissionGuard();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
-window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupPermissionGuard();groupToggle()},0);
+let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();linkifyMessages();polishComments();groupPermissionGuard();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
+window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();linkifyMessages();polishComments();groupPermissionGuard();groupToggle()},0);
 })();
