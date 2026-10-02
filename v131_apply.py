@@ -6,7 +6,7 @@ R=Path('.')
 # Version
 p=R/'pubspec.yaml'
 s=p.read_text()
-s=re.sub(r'^version:.*$', 'version: 1.3.1+30', s, flags=re.M)
+s=re.sub(r'^version:.*$', 'version: 1.3.7+36', s, flags=re.M)
 p.write_text(s)
 
 # Inject persistent photo cache + final mobile runtime after all app functions exist.
