@@ -18,6 +18,10 @@ on:
       - 'v131-runtime.js'
       - 'v131_apply.py'
       - 'v130_client_apply.py'
+      - 'v132_apply.py.gz.b64.part0'
+      - 'v132_apply.py.gz.b64.part1'
+      - 'v132_apply.py.gz.b64.part0'
+      - 'v132_apply.py.gz.b64.part1'
   push:
     paths:
       - 'EduChatPro_v1.2.3_ARM64_Source.zip'
@@ -147,6 +151,24 @@ jobs:
           node --check assets/webapp/v131-photos.js
           node --check assets/webapp/native-mobile-patch.js
 
+      - name: Apply v1.3.2 actual bundled UI patch
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat "$GITHUB_WORKSPACE/v132_apply.py.gz.b64.part0" "$GITHUB_WORKSPACE/v132_apply.py.gz.b64.part1" | base64 -d | gunzip > "$GITHUB_WORKSPACE/v132_apply.py"
+          python "$GITHUB_WORKSPACE/v132_apply.py"
+          grep '^version: 1.3.2+31' pubspec.yaml
+          grep -q 'ecp-v132-final' assets/webapp/index.html
+          grep -q 'ecp132-member-toggle' assets/webapp/index.html
+          grep -q 'ecp132-comments-sheet' assets/webapp/index.html
+          grep -q '__ecp132TypingChannel' assets/webapp/index.html
+          grep -q 'ecp132-reactor-row' assets/webapp/index.html
+          grep -q 'v1.3.2 authoritative Android back navigation' assets/webapp/native-mobile-patch.js
+          grep -q '_screenShareBusy' lib/features/meetings/meeting_room_page.dart
+          node --check assets/webapp/native-mobile-patch.js
+          node --check assets/webapp/photos.js
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -169,14 +191,29 @@ jobs:
           unzip -t "$APK" >/dev/null
           sha256sum "$APK"
           mkdir -p build/universal
-          cp "$APK" build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk
-          sha256sum build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk > build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk.sha256
+          cp "$APK" build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk
+          sha256sum build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk > build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk.sha256
+
+      - name: Verify bundled feature markers
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk"
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp-v132-final'
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp132-member-toggle'
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp132-comments-sheet'
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q '__ecp132TypingChannel'
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/native-mobile-patch.js | grep -q 'v1.3.2 authoritative Android back navigation'
+          unzip -p "$APK" assets/flutter_assets/assets/webapp/photos.js | grep -q 'ecp-private-photos-v3'
+          unzip -l "$APK" | grep 'lib/arm64-v8a/'
+          if unzip -l "$APK" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'; then echo 'Unexpected non-arm64 ABI'; exit 1; fi
 
       - name: Upload verified universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a
+          name: EduChatPro-v1.3.2-VERIFIED-arm64-v8a
           path: |
-            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk
-            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk.sha256
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.2-VERIFIED-arm64-v8a.apk.sha256
           if-no-files-found: error
