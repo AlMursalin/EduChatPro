@@ -68,12 +68,40 @@ function polishComments(){
  if(input){input.rows=1;input.placeholder='Write a comment…';const resize=()=>{input.style.height='auto';input.style.height=Math.min(110,input.scrollHeight)+'px'};input.addEventListener('input',resize);resize()}
  qa('.ws-comment',modal).forEach(c=>c.classList.add('v131-comment'));
 }
+
+async function hydrateAllAvatars(root=document){
+ try{
+  const client=(typeof sb!=='undefined'&&sb)||window.sb||window.supabaseClient;
+  const photos=window.EduPhotos;
+  if(!client||!photos?.get)return;
+  let uid='guest';
+  try{const ses=await client.auth.getSession();uid=ses?.data?.session?.user?.id||'guest'}catch{}
+  const nodes=qa('[data-avatar-path]',root).filter(n=>n.dataset.avatarPath&&!n.dataset.avatarPending);
+  await Promise.all(nodes.map(async n=>{
+   n.dataset.avatarPending='1';
+   const path=n.dataset.avatarPath,bucket=n.dataset.avatarBucket||'avatars';
+   try{
+    const cached=photos.peek?.(uid,bucket,path);
+    let url=cached||await photos.get(client,uid,bucket,path);
+    if(!url)return;
+    let img=n.matches('img')?n:n.querySelector('img');
+    if(!img){img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';n.prepend(img)}
+    if(img.src!==url)img.src=url;
+    img.onerror=()=>{delete n.dataset.avatarLoaded;delete n.dataset.avatarPending;};
+    n.dataset.avatarLoaded='1';
+   }catch{}
+   finally{delete n.dataset.avatarPending}
+  }));
+ }catch{}
+}
+window.hydrateAvatars=hydrateAllAvatars;
+
 function facebookShare(){
  document.addEventListener('click',async e=>{
    const b=e.target.closest?.('[data-share]');if(!b||b.closest('.meeting-shell'))return;
    if(!navigator.share)return;
    e.preventDefault();e.stopImmediatePropagation();
-   const url=new URL(CFG.PUBLIC_WEB_URL||location.origin);url.searchParams.set('post',b.dataset.share);
+   const base=(window.EDUCHAT_CONFIG&&window.EDUCHAT_CONFIG.PUBLIC_WEB_URL)||location.origin;const url=new URL(base);url.searchParams.set('post',b.dataset.share);
    try{await navigator.share({title:'Edu Chat Pro post',url:url.href});try{await sb.from('forum_shares').upsert({post_id:b.dataset.share,user_id:S.user.id})}catch{}}
    catch(err){if(err?.name!=='AbortError')try{await navigator.clipboard.writeText(url.href)}catch{}}
  },true);
@@ -122,6 +150,6 @@ html.ecp-keyboard-open .composer,html.ecp-keyboard-open .ws-composer{transition:
 `;document.head.appendChild(css);
 
 facebookShare();backHandler();
-let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();bindChatSpeed();polishComments();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
-window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();bindChatSpeed();polishComments();groupToggle()},0);
+let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{restoreConversationCache();saveConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupToggle()})}).observe(document.body,{subtree:true,childList:true});
+window.addEventListener('pagehide',saveConversationCache);setTimeout(()=>{restoreConversationCache();hydrateAllAvatars();bindChatSpeed();polishComments();groupToggle()},0);
 })();
