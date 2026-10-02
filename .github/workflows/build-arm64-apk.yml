@@ -23,6 +23,8 @@ on:
       - 'v133_apply.py'
       - 'v134_apply.py'
       - 'v135_apply.py'
+      - 'v136_apply.py'
+      - 'v136_apply.py'
       - 'v135_apply.py'
       - 'v134_apply.py'
       - 'v133_apply.py'
@@ -210,6 +212,17 @@ jobs:
           grep -q 'ecp-v135-fixes' assets/webapp/index.html
           node --check assets/webapp/native-mobile-patch.js
 
+      - name: Apply v1.3.6 avatar share fix
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$GITHUB_WORKSPACE/v136_apply.py"
+          grep '^version: 1.3.6+35' pubspec.yaml
+          grep -q 'ecp-avatar-inline-v136' assets/webapp/index.html
+          ! grep -q 'new URL(CFG.PUBLIC_WEB_URL' assets/webapp/index.html
+          grep -q 'window.EDUCHAT_CONFIG' assets/webapp/index.html
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -232,15 +245,15 @@ jobs:
           unzip -t "$APK" >/dev/null
           sha256sum "$APK"
           mkdir -p build/universal
-          cp "$APK" build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk
-          sha256sum build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk > build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk.sha256
+          cp "$APK" build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk
+          sha256sum build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk > build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk.sha256
 
       - name: Verify bundled feature markers
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
           set -euo pipefail
-          APK="build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk"
+          APK="build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk"
           unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp-v132-final'
           unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp132-member-toggle'
           unzip -p "$APK" assets/flutter_assets/assets/webapp/index.html | grep -q 'ecp132-comments-sheet'
@@ -253,8 +266,8 @@ jobs:
       - name: Upload verified universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.3.5-VERIFIED-arm64-v8a
+          name: EduChatPro-v1.3.6-VERIFIED-arm64-v8a
           path: |
-            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk
-            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.5-VERIFIED-arm64-v8a.apk.sha256
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.6-VERIFIED-arm64-v8a.apk.sha256
           if-no-files-found: error
