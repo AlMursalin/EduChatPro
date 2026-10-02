@@ -11,6 +11,7 @@ on:
       - 'v126_apply.py'
       - 'v127_apply.py'
       - 'v128_apply.py'
+      - 'v129_apply.py'
 
 jobs:
   build:
@@ -97,6 +98,15 @@ jobs:
           grep '^version:' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
 
+      - name: Apply v1.2.9 UX hardening
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          python "$GITHUB_WORKSPACE/v129_apply.py"
+          grep '^version:' pubspec.yaml
+          node --check assets/webapp/native-mobile-patch.js
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -108,6 +118,6 @@ jobs:
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.2.8-arm64-v8a
+          name: EduChatPro-v1.2.9-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
