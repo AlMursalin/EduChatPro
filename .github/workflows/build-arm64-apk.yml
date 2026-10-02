@@ -2,6 +2,22 @@ name: Build ARM64 APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'EduChatPro_v1.2.3_ARM64_Source.zip'
+      - '.github/workflows/build-arm64-apk.yml'
+      - 'v124-patch.js'
+      - 'v125_apply.py'
+      - 'v126_apply.py'
+      - 'v127_apply.py'
+      - 'v128_apply.py'
+      - 'v129_apply.py'
+      - 'v131-photos.js'
+      - 'v131-runtime.js'
+      - 'v131_apply.py'
+      - 'v130_client_apply.py'
   push:
     paths:
       - 'EduChatPro_v1.2.3_ARM64_Source.zip'
@@ -139,9 +155,28 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: flutter build apk --release --target-platform android-arm64
 
-      - name: Upload ARM64 APK
+      - name: Verify APK validity
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK"
+          mkdir -p build/universal
+          cp "$APK" build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk
+          sha256sum build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk > build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk.sha256
+
+      - name: Upload verified universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.3.1-arm64-v8a
-          path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          name: EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a
+          path: |
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk
+            ${{ env.APP_DIR }}/build/universal/EduChatPro-v1.3.1-UNIVERSAL-arm64-v8a.apk.sha256
           if-no-files-found: error
