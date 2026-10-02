@@ -141,6 +141,18 @@ jobs:
           grep -q "Group calling is disabled for members" "$GITHUB_WORKSPACE/v130_client_apply.py"
           node --check assets/webapp/native-mobile-patch.js
 
+      - name: Inspect meeting chat handler
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('lib/features/meetings/meeting_room_page.dart')
+          s=p.read_text()
+          i=s.find('meetingChat')
+          print(s[max(0,i-5000):i+9000])
+          PY
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
