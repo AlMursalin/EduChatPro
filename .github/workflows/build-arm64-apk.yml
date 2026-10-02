@@ -17,6 +17,9 @@ on:
       - 'v131_apply.py'
       - 'v130_client_apply.py'
       - 'v141_group_poll_call_migration.sql'
+      - 'v150-cache.js'
+      - 'v150-runtime.js'
+      - 'v150_apply.py'
 
 jobs:
   build:
@@ -155,6 +158,32 @@ jobs:
           print(s[max(0,i-5000):i+9000])
           PY
 
+      - name: Apply v1.5.0 actual-source final patch
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          python "$GITHUB_WORKSPACE/v150_apply.py"
+          grep '^version:' pubspec.yaml
+          node --check assets/webapp/v150-cache.js
+          node --check assets/webapp/v150-runtime.js
+          grep -q 'ecp-chat-v150' assets/webapp/index.html
+          grep -q 'data-comment-id' assets/webapp/index.html
+          grep -q 'v150-cache.js' assets/webapp/index.html
+          grep -q 'v150-runtime.js' assets/webapp/index.html
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('assets/webapp/index.html').read_text()
+          assert s.index('native-mobile-patch.js') < s.index('v150-runtime.js'), 'final runtime must load after native patch'
+          assert 'v131-runtime.js' not in s, 'old runtime still loaded'
+          assert 'ecp-chat-v150' in s
+          print('v1.5.0 source markers verified')
+          PY
+
+      - name: Clean previous Flutter build
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter clean
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -163,9 +192,29 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: flutter build apk --release --target-platform android-arm64
 
+      - name: Verify final APK bundled runtime
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          rm -rf /tmp/ecp-apk && mkdir -p /tmp/ecp-apk
+          unzip -q "$APK" -d /tmp/ecp-apk
+          WEB=/tmp/ecp-apk/assets/flutter_assets/assets/webapp
+          test -f "$WEB/v150-cache.js"
+          test -f "$WEB/v150-runtime.js"
+          grep -q 'ecp-chat-v150' "$WEB/index.html"
+          grep -q 'data-comment-id' "$WEB/index.html"
+          grep -q 'v150-runtime.js' "$WEB/index.html"
+          grep -q 'Member Texting & Calling' "$WEB/v150-runtime.js"
+          grep -q 'ecp-facebook-comments' "$WEB/v150-runtime.js"
+          grep -q 'Texting or calling is not allowed in this group' "$WEB/v150-runtime.js"
+          grep -q 'Polls' "$WEB/v150-runtime.js"
+          echo "Final APK runtime markers verified"
+
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.4.3-arm64-v8a
+          name: EduChatPro-v1.5.0-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
