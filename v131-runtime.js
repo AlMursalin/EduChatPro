@@ -16,7 +16,7 @@ function restoreConversationCache(){
 }
 function saveConversationCache(){
  const t=currentThread(),log=q('#dm-log')||q('#chat-log');
- if(t&&log?.children.length){const clone=log.cloneNode(true);qa('.typing-indicator,.sending,.chat-reactions',clone).forEach(n=>n.remove());write(t[0]==='direct'?'chat':'group',t[1],{html:clone.innerHTML.slice(-240000)})}
+ if(t&&log?.children.length){const clone=log.cloneNode(true);qa('.typing-indicator,.sending,.chat-reactions',clone).forEach(n=>n.remove());qa('[data-avatar-path]',clone).forEach(n=>{delete n.dataset.avatarLoaded;delete n.dataset.avatarPending;const img=n.querySelector('img');if(img&&String(img.src).startsWith('blob:'))img.remove()});qa('[data-photo]',clone).forEach(img=>{if(String(img.src).startsWith('blob:'))img.removeAttribute('src')});write(t[0]==='direct'?'chat':'group',t[1],{html:clone.innerHTML.slice(-240000)})}
  const rail=q('#conversation-rows');if(rail?.children.length)write('rail','main',{html:rail.innerHTML.slice(0,180000)});
 }
 
