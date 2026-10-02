@@ -13,7 +13,7 @@ for name in ['assets/webapp/index.html','assets/webapp/app-web118.js','assets/we
     s=s.replace("item.kind==='direct'||item.allow_member_messaging||item.created_by===myId||c.can('groups.manage')",
                 "item.kind==='direct'||item.allow_member_messaging||c.isAdmin()")
     old="${W.button('search','Search messages','id=\"message-search-toggle\"')}${W.button('video','Start video call','id=\"chat-video\"')}${W.button('phone','Start audio call','id=\"chat-audio\"')}"
-    new="${W.button('search','Search messages','id=\"message-search-toggle\"')}${item.kind==='direct'||item.allow_member_messaging||c.isAdmin()?W.button('video','Start video call','id=\"chat-video\"'):''}${item.kind==='direct'||item.allow_member_messaging||c.isAdmin()?W.button('phone','Start audio call','id=\"chat-audio\"'):''}"
+    new="${W.button('search','Search messages','id=\"message-search-toggle\"')}${W.button('video','Start video call','id=\"chat-video\"')}${W.button('phone','Start audio call','id=\"chat-audio\"')}"
     s=s.replace(old,new)
     s=s.replace("!g.allow_member_messaging&&!can('groups.manage')&&g.created_by!==S.user.id","!g.allow_member_messaging&&!isAdmin()")
     s=s.replace("!g.allow_member_messaging&&!isAdmin()&&g.created_by!==S.user.id","!g.allow_member_messaging&&!isAdmin()")
