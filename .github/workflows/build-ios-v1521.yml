@@ -1,0 +1,109 @@
+name: Build Edu Chat Pro iOS v1.5.21 unsigned
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ios-v1.5.21-cloud-build
+    paths:
+      - 'ios_patch_1521.zip'
+      - '.github/workflows/build-ios-v1521.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout cloud-build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.22.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'
+          channel: stable
+          cache: true
+
+      - name: Show tool versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          ruby --version
+          pod --version
+
+      - name: Reconstruct latest v1.5.21 source
+        run: |
+          set -euo pipefail
+          rm -rf buildsrc
+          mkdir -p buildsrc
+          unzip -q EduChatPro_v1.2.3_ARM64_Source.zip -d buildsrc
+          SRC="buildsrc/EduChatPro_v1.2.3_ARM64_Source"
+          test -f "$SRC/pubspec.yaml"
+          unzip -qo ios_patch_1521.zip -d "$SRC"
+          echo "Source version:"
+          grep '^version:' "$SRC/pubspec.yaml"
+          test -f "$SRC/scripts/prepare_ios.sh"
+          test -f "$SRC/ios_support/AppDelegate.swift"
+
+      - name: Prepare generated iOS project
+        run: |
+          set -euo pipefail
+          cd buildsrc/EduChatPro_v1.2.3_ARM64_Source
+          chmod +x scripts/prepare_ios.sh BUILD_IOS.sh || true
+          bash scripts/prepare_ios.sh
+
+      - name: Analyze Dart
+        run: |
+          set -euo pipefail
+          cd buildsrc/EduChatPro_v1.2.3_ARM64_Source
+          flutter analyze --no-fatal-infos
+
+      - name: Build iOS release without signing
+        run: |
+          set -euo pipefail
+          cd buildsrc/EduChatPro_v1.2.3_ARM64_Source
+          flutter build ios --release --no-codesign --dart-define-from-file=config.json
+
+      - name: Verify built app
+        run: |
+          set -euo pipefail
+          SRC="buildsrc/EduChatPro_v1.2.3_ARM64_Source"
+          APP="$SRC/build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          test -f "$APP/Runner"
+          plutil -p "$APP/Info.plist"
+          /usr/bin/file "$APP/Runner"
+          echo "Runner.app size:"
+          du -sh "$APP"
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          SRC="buildsrc/EduChatPro_v1.2.3_ARM64_Source"
+          OUT="$SRC/build/ios/unsigned_ipa"
+          rm -rf "$OUT"
+          mkdir -p "$OUT/Payload"
+          cp -R "$SRC/build/ios/iphoneos/Runner.app" "$OUT/Payload/"
+          cd "$OUT"
+          zip -qry ../EduChatPro-v1.5.21-unsigned.ipa Payload
+          shasum -a 256 ../EduChatPro-v1.5.21-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.5.21-iOS-unsigned
+          path: buildsrc/EduChatPro_v1.2.3_ARM64_Source/build/ios/EduChatPro-v1.5.21-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload generated Xcode project on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.5.21-iOS-build-debug
+          path: |
+            buildsrc/EduChatPro_v1.2.3_ARM64_Source/ios
+            buildsrc/EduChatPro_v1.2.3_ARM64_Source/pubspec.lock
+          if-no-files-found: warn
+          retention-days: 3
