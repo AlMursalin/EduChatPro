@@ -243,6 +243,20 @@ jobs:
           if missing: raise SystemExit('Missing v1.5.6 markers: '+', '.join(missing))
           PY
 
+      - name: Package reconstructed v1.5.6 source
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          zip -qr /tmp/EduChatPro-v1.5.6-reconstructed-source.zip . -x 'build/*' '.dart_tool/*'
+
+      - name: Upload reconstructed v1.5.6 source
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.5.6-reconstructed-source
+          path: /tmp/EduChatPro-v1.5.6-reconstructed-source.zip
+          if-no-files-found: error
+
       - name: Clean previous Flutter build
         working-directory: ${{ env.APP_DIR }}
         run: flutter clean
