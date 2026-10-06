@@ -1,0 +1,132 @@
+name: Build Edu Chat Pro v1.5.22
+
+on:
+  push:
+    branches:
+      - chatgpt/android-v1522-build
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare v1.5.22 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf appsrc
+          mkdir appsrc
+          unzip -q EduChatPro_v1.2.3_ARM64_Source.zip -d appsrc
+          SRC="$(find appsrc -maxdepth 3 -name pubspec.yaml -printf '%h\n' | head -n1)"
+          test -n "$SRC"
+          unzip -oq build-input/v1522-overlay-min.zip -d "$SRC"
+          echo "APP_DIR=$SRC" >> "$GITHUB_ENV"
+          grep '^version:' "$SRC/pubspec.yaml"
+          grep -q 'version: 1.5.22+72' "$SRC/pubspec.yaml"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Android SDK paths
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLUTTER_ROOT="$(dirname "$(dirname "$(command -v flutter)")")"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT"
+          cat > android/local.properties <<EOF
+          sdk.dir=$SDK_ROOT
+          flutter.sdk=$FLUTTER_ROOT
+          flutter.buildMode=release
+          flutter.versionName=1.5.22
+          flutter.versionCode=72
+          EOF
+          sed -i '/^[[:space:]]*org\.gradle\.java\.home[[:space:]]*=/d' android/gradle.properties
+          flutter --version
+          java -version
+
+      - name: Validate web runtime syntax
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/webapp/educhat-r4.js
+          node --check assets/webapp/meeting.js
+          node --check assets/webapp/native-mobile-patch.js
+          node --check assets/webapp/presence.js
+          node --check assets/webapp/v162-runtime.js
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          html=Path('assets/webapp/index.html').read_text()
+          assert 'Forgot password / User ID?' in html
+          assert 'window.EduPermissionGate' in html
+          assert 'v162-runtime.js' in html
+          assert 'avatarHtml' in html and 'adminAccounts' in html
+          scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',html,re.I|re.S)
+          out=Path('/tmp/ecp-inline'); out.mkdir(exist_ok=True)
+          for i,s in enumerate(scripts):
+              p=out/f'{i:02d}.js'; p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          print('inline scripts:',len(scripts))
+          PY
+
+      - name: Flutter dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: Flutter analyze
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build ARM64 release APK
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Verify APK package
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          unzip -tq "$APK"
+          rm -rf /tmp/ecp-apk && mkdir /tmp/ecp-apk
+          unzip -q "$APK" -d /tmp/ecp-apk
+          test -f /tmp/ecp-apk/lib/arm64-v8a/libapp.so
+          test ! -d /tmp/ecp-apk/lib/armeabi-v7a
+          test ! -d /tmp/ecp-apk/lib/x86
+          test ! -d /tmp/ecp-apk/lib/x86_64
+          WEB=/tmp/ecp-apk/assets/flutter_assets/assets/webapp
+          grep -q 'Forgot password / User ID?' "$WEB/index.html"
+          grep -q 'window.EduPermissionGate' "$WEB/index.html"
+          grep -q 'v162-runtime.js' "$WEB/index.html"
+          grep -q '1.5.22-android-sync' "$WEB/v162-runtime.js"
+          grep -q 'special.*hello\|type.*hello' "$WEB/meeting.js" || true
+          grep -q 'stun2.l.google.com' lib/services/supabase_webrtc_backend.dart
+          grep -q 'reconnectTimers' lib/services/supabase_webrtc_backend.dart
+          grep -q 'Update User ID & password' lib/features/auth/auth_page.dart
+          echo "APK_SIZE=$(stat -c%s "$APK")" >> "$GITHUB_ENV"
+          sha256sum "$APK"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.5.22-arm64-v8a
+          path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
