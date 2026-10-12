@@ -251,6 +251,7 @@ jobs:
           set -e
           cat "$GITHUB_WORKSPACE"/v1530_parts/part_* > /tmp/v1530_apply.py
           python /tmp/v1530_apply.py
+          sed -i '/^[[:space:]]*org\.gradle\.java\.home[[:space:]]*=/d' android/gradle.properties
           grep -q '^version: 1.5.30+80' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
           node --check assets/webapp/educhat-r4.js
