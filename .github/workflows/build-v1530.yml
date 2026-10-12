@@ -1,0 +1,109 @@
+name: Build EduChatPro v1.5.30
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v1530_parts/**'
+      - 'v1530_assemble.py'
+      - '.github/workflows/build-v1530.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Flutter source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf appsrc
+          mkdir appsrc
+          unzip -q EduChatPro_v1.2.3_ARM64_Source.zip -d appsrc
+          SRC="$(find appsrc -maxdepth 3 -name pubspec.yaml -printf '%h\n' | head -n1)"
+          test -n "$SRC"
+          echo "APP_DIR=$SRC" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare baseline through v1.5.6
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i '/^[[:space:]]*org\.gradle\.java\.home[[:space:]]*=/d' android/gradle.properties || true
+          python "$GITHUB_WORKSPACE/v125_apply.py"
+          python "$GITHUB_WORKSPACE/v126_apply.py"
+          python "$GITHUB_WORKSPACE/v127_apply.py"
+          python "$GITHUB_WORKSPACE/v128_apply.py"
+          python "$GITHUB_WORKSPACE/v129_apply.py"
+          python "$GITHUB_WORKSPACE/v130_client_apply.py"
+          python "$GITHUB_WORKSPACE/v131_apply.py"
+          python "$GITHUB_WORKSPACE/v150_apply.py"
+          python "$GITHUB_WORKSPACE/v152_apply.py"
+          python "$GITHUB_WORKSPACE/v156_apply.py"
+
+      - name: Apply v1.5.30 final snapshot
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$GITHUB_WORKSPACE/v1530_assemble.py"
+          python "$GITHUB_WORKSPACE/v1530_apply_build.py"
+          grep -q '^version: 1.5.30+80$' pubspec.yaml
+          node --check assets/webapp/v166-runtime.js
+          node --check assets/webapp/app.js
+          node --check assets/webapp/native-mobile-patch.js
+          grep -q 'v166-runtime.js' assets/webapp/index.html
+          grep -q 'set_weekly_class_reminder' assets/webapp/v166-runtime.js
+          grep -q 'chatHeadPermission' assets/webapp/v166-runtime.js
+          grep -q 'SYSTEM_ALERT_WINDOW' android/app/src/main/AndroidManifest.xml
+          grep -q 'FOREGROUND_SERVICE_SPECIAL_USE' android/app/src/main/AndroidManifest.xml
+          grep -q 'educhat/chathead' android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/MainActivity.kt
+          test -f android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/ChatHeadService.kt
+          echo "v1.5.30 source markers verified"
+
+      - name: Flutter dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: Build ARM64 release APK
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Verify bundled v1.5.30 runtime
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          rm -rf /tmp/ecp1530
+          mkdir -p /tmp/ecp1530
+          unzip -q "$APK" -d /tmp/ecp1530
+          WEB=/tmp/ecp1530/assets/flutter_assets/assets/webapp
+          test -f "$WEB/v166-runtime.js"
+          grep -q 'v166-runtime.js' "$WEB/index.html"
+          grep -q '1.5.30+80' "$WEB/v166-runtime.js"
+          grep -q 'set_weekly_class_reminder' "$WEB/v166-runtime.js"
+          grep -q 'chatHeadPermission' "$WEB/v166-runtime.js"
+          echo "Bundled v1.5.30 runtime verified"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduChatPro-v1.5.30-arm64-v8a
+          path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
