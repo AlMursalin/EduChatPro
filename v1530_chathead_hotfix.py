@@ -19,16 +19,60 @@ new='''object NativePushRouter {\n private fun maybeChatHead(context:Context,d:M
 if old not in s and 'private fun maybeChatHead' not in s: raise SystemExit('IncomingCalls marker missing')
 s=s.replace(old,new,1)
 inc.write_text(s)
+print('Applied v1.5.30 chat-head background hotfix')
 
+# Historical CI base can carry an older shared/widgets.dart without the reply helpers
+# used by the reconstructed current group/direct chat pages. Restore the helpers
+# before compilation when they are absent.
 widgets=R/'lib/shared/widgets.dart'
 s=widgets.read_text()
 if 'class ChatReplyParts' not in s:
     marker="void notice(BuildContext context, Object message) {"
     i=s.find(marker)
     if i<0: raise SystemExit('widgets.dart notice marker missing')
+    # Insert helpers before notice so the symbols are top-level and available to all chat pages.
     helpers='''/// Stored as readable text so older app/web versions can still show replies.\nclass ChatReplyParts {\n  const ChatReplyParts({required this.body, this.quote});\n  final String body;\n  final String? quote;\n}\n\nString replyMessage(String name, String quoted, String body) {\n  final clean = quoted.replaceAll(RegExp(r'\\s+'), ' ').trim();\n  final clipped = clean.substring(0, clean.length > 240 ? 240 : clean.length);\n  return '↪ $name: $clipped\\n\\n$body';\n}\n\nChatReplyParts splitReplyMessage(String value) {\n  if (!value.startsWith('↪ ')) return ChatReplyParts(body: value);\n  final cut = value.indexOf('\\n\\n');\n  if (cut < 0) return ChatReplyParts(body: value);\n  return ChatReplyParts(body: value.substring(cut + 2), quote: value.substring(2, cut));\n}\n\n'''
     s=s[:i]+helpers+s[i:]
     widgets.write_text(s)
     print('Restored chat reply helpers for historical CI base')
 
-print('Applied v1.5.30 chat-head/background/CI compatibility hotfix')
+# Fix the reconstructed startup-permissions source if the historical snapshot
+# contains the missing parenthesis around the Android app-settings Intent.
+sp=R/'android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/StartupPermissions.kt'
+ss=sp.read_text()
+bad='private fun openAppSettings(){try{activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${activity.packageName}"))}catch(_:Exception){}}'
+good='private fun openAppSettings(){try{activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${activity.packageName}")))}catch(_:Exception){}}'
+if bad in ss:
+    ss=ss.replace(bad,good,1)
+    sp.write_text(ss)
+    print('Fixed StartupPermissions app-settings syntax')
+
+# Group-picture preview: clicking a group photo in the chat list, group header,
+# or legacy group-info panel opens a large preview without navigating away.
+vr=R/'assets/webapp/v166-runtime.js'
+js=vr.read_text()
+if 'async function groupPhotoPreview' not in js:
+    marker='/* ---------- Android chat head ---------- */'
+    i=js.find(marker)
+    if i<0: raise SystemExit('v166 group preview insertion marker missing')
+    block='''/* ---------- group picture preview ---------- */
+async function groupPhotoPreview(img){
+ const path=img?.dataset?.photo||img?.dataset?.groupPhoto||'';if(!path)return;
+ try{
+  const user=state()?.user?.id;if(!user)return;
+  const url=await window.EduPhotos.get(db(),user,'group-images',path);
+  const d=document.createElement('dialog');d.className='ecp-avatar-preview ecp-group-photo-preview';
+  d.innerHTML=`<button class="ecp-avatar-close" aria-label="Close">×</button><img src="${attr(url)}" alt="Group picture preview">`;
+  document.body.append(d);d.querySelector('button').onclick=()=>d.close();
+  d.addEventListener('click',e=>{if(e.target===d)d.close()});d.addEventListener('close',()=>d.remove());d.showModal();
+ }catch(e){U.toast(U.errorText(e),'error')}
+}
+document.addEventListener('click',e=>{
+ const img=e.target.closest?.('img[data-bucket="group-images"][data-photo],img[data-group-photo]');
+ if(!img)return;e.preventDefault();e.stopPropagation();groupPhotoPreview(img);
+},true);
+
+'''
+    js=js[:i]+block+js[i:]
+    vr.write_text(js)
+    print('Added group picture preview')
