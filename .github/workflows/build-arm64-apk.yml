@@ -29,6 +29,7 @@ on:
       - 'v154-runtime.js'
       - 'v153-runtime.js'
       - 'v1530_parts/**'
+      - 'v1530_chathead_hotfix.py'
 
 jobs:
   build:
@@ -251,6 +252,7 @@ jobs:
           set -e
           cat "$GITHUB_WORKSPACE"/v1530_parts/part_* > /tmp/v1530_apply.py
           python /tmp/v1530_apply.py
+          python "$GITHUB_WORKSPACE/v1530_chathead_hotfix.py"
           sed -i '/^[[:space:]]*org\.gradle\.java\.home[[:space:]]*=/d' android/gradle.properties
           grep -q '^version: 1.5.30+80' pubspec.yaml
           node --check assets/webapp/native-mobile-patch.js
@@ -263,6 +265,7 @@ jobs:
           grep -q 'forum_comment' assets/webapp/index.html
           grep -q 'SYSTEM_ALERT_WINDOW' android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/ChatHeadService.kt
+          grep -q 'maybeChatHead' android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/IncomingCalls.kt
           grep -q 'pointer-request' lib/features/meetings/meeting_room_page.dart
           grep -q 'pointer-permission' lib/features/meetings/meeting_room_page.dart
           echo "v1.5.30 source markers verified"
