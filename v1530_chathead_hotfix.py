@@ -76,3 +76,24 @@ document.addEventListener('click',e=>{
     js=js[:i]+block+js[i:]
     vr.write_text(js)
     print('Added group picture preview')
+
+# Exact direct-chat mention/message deep link: keep the message id so the web
+# workspace can scroll/highlight after opening the direct thread.
+for rel in ['assets/webapp/index.html','assets/webapp/educhat-r4.js']:
+    p=R/rel
+    s=p.read_text()
+    old="else if(n.target_kind==='direct'){window.EduWorkspace.pending={kind:'direct',id:n.target_id};await navigate('people');}"
+    new="else if(n.target_kind==='direct'){window.EduWorkspace.pendingMessage=n.resource_id;window.EduWorkspace.pending={kind:'direct',id:n.target_id};await navigate('people');}"
+    if old in s:
+        p.write_text(s.replace(old,new))
+        print('Added exact direct notification deep link in',rel)
+
+# Notification-center direct mention/message routing also keeps the message id.
+for rel in ['assets/webapp/index.html','assets/webapp/educhat-r4.js']:
+    p=R/rel
+    s=p.read_text()
+    old="if(n.target_kind==='direct'){await W.openChat(c,'direct',target);return;}"
+    new="if(n.target_kind==='direct'){W.pendingMessage=n.resource_id;await W.openChat(c,'direct',target);return;}"
+    if old in s:
+        p.write_text(s.replace(old,new))
+        print('Patched notification-center direct message focus in',rel)
