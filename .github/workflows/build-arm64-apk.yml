@@ -28,6 +28,7 @@ on:
       - 'v155-runtime.js'
       - 'v154-runtime.js'
       - 'v153-runtime.js'
+      - 'v1530_parts/**'
 
 jobs:
   build:
@@ -243,6 +244,28 @@ jobs:
           if missing: raise SystemExit('Missing v1.5.6 markers: '+', '.join(missing))
           PY
 
+      - name: Apply v1.5.30 final snapshot
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -e
+          cat "$GITHUB_WORKSPACE"/v1530_parts/part_* > /tmp/v1530_apply.py
+          python /tmp/v1530_apply.py
+          grep -q '^version: 1.5.30+80' pubspec.yaml
+          node --check assets/webapp/native-mobile-patch.js
+          node --check assets/webapp/educhat-r4.js
+          node --check assets/webapp/v165-runtime.js
+          node --check assets/webapp/v166-runtime.js
+          grep -q 'v166-runtime.js' assets/webapp/index.html
+          grep -q 'Class Reminder' assets/webapp/v166-runtime.js
+          grep -q 'chatHeadPermission' assets/webapp/v166-runtime.js
+          grep -q 'forum_comment' assets/webapp/index.html
+          grep -q 'SYSTEM_ALERT_WINDOW' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/kotlin/com/nextechdigitalacademy/educhat_pro/ChatHeadService.kt
+          grep -q 'pointer-request' lib/features/meetings/meeting_room_page.dart
+          grep -q 'pointer-permission' lib/features/meetings/meeting_room_page.dart
+          echo "v1.5.30 source markers verified"
+
       - name: Clean previous Flutter build
         working-directory: ${{ env.APP_DIR }}
         run: flutter clean
@@ -271,6 +294,7 @@ jobs:
           test -f "$WEB/v154-runtime.js"
           test -f "$WEB/v155-runtime.js"
           test -f "$WEB/v156-runtime.js"
+          test -f "$WEB/v166-runtime.js"
           grep -q 'ecp-chat-v150' "$WEB/index.html"
           grep -q 'data-comment-id' "$WEB/index.html"
           grep -q 'v150-runtime.js' "$WEB/index.html"
@@ -286,11 +310,16 @@ jobs:
           grep -q 'ecp-forum-cache' "$WEB/index.html"
           grep -q 'v156-runtime.js' "$WEB/index.html"
           grep -q 'const returnToChats=!!(S.group||S.direct);' "$WEB/index.html"
-          echo "Final APK runtime markers verified"
+          grep -q 'v166-runtime.js' "$WEB/index.html"
+          grep -q 'chatHeadPermission' "$WEB/v166-runtime.js"
+          grep -q 'Repeat every week on' "$WEB/v166-runtime.js"
+          grep -a -q 'ChatHeadService' /tmp/ecp-apk/classes.dex
+          grep -a -q 'educhat/chathead' /tmp/ecp-apk/classes.dex
+          echo "Final APK v1.5.30 runtime/native markers verified"
 
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: EduChatPro-v1.5.6-arm64-v8a
+          name: EduChatPro-v1.5.30-arm64-v8a
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
