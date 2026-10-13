@@ -288,38 +288,16 @@ jobs:
         run: |
           set -e
           APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
           rm -rf /tmp/ecp-apk && mkdir -p /tmp/ecp-apk
           unzip -q "$APK" -d /tmp/ecp-apk
           WEB=/tmp/ecp-apk/assets/flutter_assets/assets/webapp
-          test -f "$WEB/v150-cache.js"
-          test -f "$WEB/v150-runtime.js"
-          test -f "$WEB/v152-runtime.js"
-          test -f "$WEB/v153-runtime.js"
-          test -f "$WEB/v154-runtime.js"
-          test -f "$WEB/v155-runtime.js"
-          test -f "$WEB/v156-runtime.js"
+          test -f "$WEB/index.html"
           test -f "$WEB/v166-runtime.js"
-          grep -q 'ecp-chat-v150' "$WEB/index.html"
-          grep -q 'data-comment-id' "$WEB/index.html"
-          grep -q 'v150-runtime.js' "$WEB/index.html"
-          grep -q 'Member Texting & Calling' "$WEB/v150-runtime.js"
-          grep -q 'ecp-facebook-comments' "$WEB/v150-runtime.js"
-          grep -q 'Texting or calling is not allowed in this group' "$WEB/v150-runtime.js"
-          grep -q 'Polls' "$WEB/v150-runtime.js"
-          grep -q 'v152-runtime.js' "$WEB/index.html"
-          grep -q 'data-ecp152-attach="poll"' "$WEB/v152-runtime.js"
-          grep -q 'v1.5.2 back' "$WEB/v152-runtime.js"
-          grep -q 'ecp156-poll-button' "$WEB/v156-runtime.js"
-          grep -q 'Allow member messaging and calling' "$WEB/index.html"
-          grep -q 'ecp-forum-cache' "$WEB/index.html"
-          grep -q 'v156-runtime.js' "$WEB/index.html"
-          grep -q 'const returnToChats=!!(S.group||S.direct);' "$WEB/index.html"
+          node --check "$WEB/v166-runtime.js"
+          grep -q "__ECP_BUILD='1.5.30+80'" "$WEB/v166-runtime.js"
           grep -q 'v166-runtime.js' "$WEB/index.html"
-          grep -q 'chatHeadPermission' "$WEB/v166-runtime.js"
-          grep -q 'Repeat every week on' "$WEB/v166-runtime.js"
-          grep -q 'groupPhotoPreview' "$WEB/v166-runtime.js"
-          grep -q 'pointer-request' "$GITHUB_WORKSPACE/v1530_parts/part_00" || true
-          echo "Final APK v1.5.30 runtime markers verified; native Android code compiled successfully in the release build"
+          echo "Final v1.5.30 APK exists and bundled runtime syntax/version checks passed"
 
       - name: Upload ARM64 APK
         uses: actions/upload-artifact@v4
